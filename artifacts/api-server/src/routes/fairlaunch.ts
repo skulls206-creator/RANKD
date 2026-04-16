@@ -183,18 +183,7 @@ router.get(
 
     const cgMap = new Map(cacheEntry.coingecko.map((d) => [d.id, d]));
 
-    let coins = FAIR_LAUNCH_COINS;
-
-    if (search && search.trim().length > 0) {
-      const q = search.trim().toLowerCase();
-      coins = coins.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.symbol.toLowerCase().includes(q),
-      );
-    }
-
-    const withData = coins.map((meta) => {
+    const allWithData = FAIR_LAUNCH_COINS.map((meta) => {
       let live: NormalizedMarketData;
       if (meta.coinPaprikaId) {
         live = cacheEntry.coinpaprika.get(meta.id) ?? {
@@ -207,16 +196,27 @@ router.get(
       return { meta, live };
     });
 
-    withData.sort((a, b) => {
+    allWithData.sort((a, b) => {
       const mcA = a.live.marketCap ?? -1;
       const mcB = b.live.marketCap ?? -1;
       if (mcB !== mcA) return mcB - mcA;
       return a.meta.name.localeCompare(b.meta.name);
     });
 
-    const ranked = withData.map(({ meta, live }, idx) =>
+    const globallyRanked = allWithData.map(({ meta, live }, idx) =>
       buildCoinResponse(meta, idx + 1, live),
     );
+
+    let ranked = globallyRanked;
+
+    if (search && search.trim().length > 0) {
+      const q = search.trim().toLowerCase();
+      ranked = globallyRanked.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.symbol.toLowerCase().includes(q),
+      );
+    }
 
     const lastUpdated = cacheEntry.fetchedAt.toISOString();
 
