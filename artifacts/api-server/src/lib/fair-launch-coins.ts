@@ -1,6 +1,7 @@
 export interface FairLaunchCoinMeta {
   id: string;
   coinPaprikaId?: string;
+  utopiaExplorer?: boolean;
   name: string;
   symbol: string;
   launchYear: number;
@@ -203,6 +204,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
   {
     id: "crp-crypton",
     coinPaprikaId: "crp-crypton",
+    utopiaExplorer: true,
     name: "Crypton",
     symbol: "CRP",
     launchYear: 2019,

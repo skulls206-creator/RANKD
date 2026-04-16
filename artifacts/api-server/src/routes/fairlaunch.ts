@@ -39,6 +39,15 @@ interface CoinPaprikaMarketData {
   };
 }
 
+interface UtopiaExplorerBlock {
+  id: number;
+  CRPSupply: string;
+  TotalCRPAmount: string;
+  BlockReward: string;
+  miningThreads: string;
+  created_at: string;
+}
+
 interface NormalizedMarketData {
   id: string;
   price: number | null;
@@ -66,20 +75,46 @@ async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
   return response.json() as Promise<CoinGeckoMarketData[]>;
 }
 
+async function fetchUtopiaSupply(): Promise<number | null> {
+  try {
+    const url = "https://utopian.is/api/explorer/blocks/get";
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const blocks = (await response.json()) as UtopiaExplorerBlock[];
+    const latest = blocks?.[0];
+    if (!latest?.CRPSupply) return null;
+    const supply = parseFloat(latest.CRPSupply);
+    return isNaN(supply) ? null : supply;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchCoinPaprikaData(
   meta: FairLaunchCoinMeta,
 ): Promise<NormalizedMarketData | null> {
   if (!meta.coinPaprikaId) return null;
   try {
-    const url = `https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(meta.coinPaprikaId)}`;
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) return null;
-    const data = (await response.json()) as CoinPaprikaMarketData;
+    const [paprikaResp, utopiaSupply] = await Promise.all([
+      fetch(`https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(meta.coinPaprikaId)}`, {
+        headers: { Accept: "application/json" },
+      }),
+      meta.utopiaExplorer ? fetchUtopiaSupply() : Promise.resolve(null),
+    ]);
+
+    if (!paprikaResp.ok) return null;
+    const data = (await paprikaResp.json()) as CoinPaprikaMarketData;
+    const price = data.quotes?.USD?.price ?? null;
+    const circulatingSupply = utopiaSupply ?? data.circulating_supply ?? data.total_supply ?? null;
+    const marketCap = price != null && circulatingSupply != null
+      ? price * circulatingSupply
+      : data.quotes?.USD?.market_cap ?? null;
+
     return {
       id: meta.id,
-      price: data.quotes?.USD?.price ?? null,
-      marketCap: data.quotes?.USD?.market_cap ?? null,
-      circulatingSupply: data.circulating_supply ?? data.total_supply ?? null,
+      price,
+      marketCap,
+      circulatingSupply,
       change24h: data.quotes?.USD?.percent_change_24h ?? null,
       imageUrl: `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
     };
