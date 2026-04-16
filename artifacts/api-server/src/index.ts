@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startGitHubCacheRefresh } from "./routes/fairlaunch";
 
 const rawPort = process.env["PORT"];
 
@@ -14,6 +15,13 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+const refreshLogger = {
+  info: (msg: string) => logger.info(msg),
+  error: (msg: string) => logger.error(msg),
+};
+
+await startGitHubCacheRefresh(refreshLogger);
 
 app.listen(port, (err) => {
   if (err) {

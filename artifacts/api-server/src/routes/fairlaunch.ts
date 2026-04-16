@@ -62,6 +62,8 @@ interface GitHubReleaseCache {
 }
 
 const GITHUB_CACHE_TTL_MS = 6 * 60 * 60_000;
+const GITHUB_REFRESH_INTERVAL_MS = 5 * 60 * 60_000; // shorter than TTL so entries never expire between runs
+const GITHUB_STAGGER_DELAY_MS = 2_000;
 const githubReleaseCache = new Map<string, GitHubReleaseCache>();
 
 interface LiveNodeEntry {
@@ -167,11 +169,19 @@ async function fetchUtopiaData(): Promise<UtopiaData> {
   }
 }
 
-async function fetchGitHubRelease(githubUrl: string): Promise<GitHubReleaseCache> {
-  const cached = githubReleaseCache.get(githubUrl);
-  if (cached && Date.now() - cached.fetchedAt.getTime() < GITHUB_CACHE_TTL_MS) {
-    return cached;
+function buildGitHubHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const token = process.env["GITHUB_TOKEN"];
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
+  return headers;
+}
+
+async function fetchGitHubReleaseFromNetwork(githubUrl: string): Promise<GitHubReleaseCache> {
   const nullEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date() };
   try {
     const match = githubUrl.match(/github\.com\/([^/]+\/[^/]+)/);
@@ -181,9 +191,7 @@ async function fetchGitHubRelease(githubUrl: string): Promise<GitHubReleaseCache
     }
     const repo = match[1].replace(/\.git$/, "");
     const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
-    const response = await fetch(apiUrl, {
-      headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
-    });
+    const response = await fetch(apiUrl, { headers: buildGitHubHeaders() });
     if (!response.ok) {
       githubReleaseCache.set(githubUrl, nullEntry);
       return nullEntry;
@@ -200,6 +208,47 @@ async function fetchGitHubRelease(githubUrl: string): Promise<GitHubReleaseCache
     githubReleaseCache.set(githubUrl, nullEntry);
     return nullEntry;
   }
+}
+
+async function fetchGitHubRelease(githubUrl: string): Promise<GitHubReleaseCache> {
+  const cached = githubReleaseCache.get(githubUrl);
+  if (cached && Date.now() - cached.fetchedAt.getTime() < GITHUB_CACHE_TTL_MS) {
+    return cached;
+  }
+  return fetchGitHubReleaseFromNetwork(githubUrl);
+}
+
+async function refreshAllGitHubReleases(logger?: { info: (msg: string) => void; error: (msg: string) => void }): Promise<void> {
+  const coinsWithGitHub = FAIR_LAUNCH_COINS.filter((meta) => meta.github && !meta.softwareVersion);
+  logger?.info(`GitHub cache refresh: updating ${coinsWithGitHub.length} coins`);
+
+  for (let i = 0; i < coinsWithGitHub.length; i++) {
+    const meta = coinsWithGitHub[i]!;
+    try {
+      await fetchGitHubReleaseFromNetwork(meta.github!);
+    } catch {
+      logger?.error(`GitHub cache refresh: failed for ${meta.id}`);
+    }
+    if (i < coinsWithGitHub.length - 1) {
+      await new Promise<void>((resolve) => setTimeout(resolve, GITHUB_STAGGER_DELAY_MS));
+    }
+  }
+
+  logger?.info("GitHub cache refresh: complete");
+}
+
+export async function startGitHubCacheRefresh(logger?: { info: (msg: string) => void; error: (msg: string) => void }): Promise<void> {
+  try {
+    await refreshAllGitHubReleases(logger);
+  } catch {
+    logger?.error("GitHub cache refresh: initial refresh failed");
+  }
+
+  setInterval(() => {
+    refreshAllGitHubReleases(logger).catch(() => {
+      logger?.error("GitHub cache refresh: scheduled refresh failed");
+    });
+  }, GITHUB_REFRESH_INTERVAL_MS).unref();
 }
 
 async function fetchCoinPaprikaData(
