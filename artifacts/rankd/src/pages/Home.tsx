@@ -43,12 +43,17 @@ function WhyFairTooltip({ text, coinName }: WhyFairTooltipProps) {
         : rect.left - tooltipWidth - 8;
       setPos({ top: rect.top, left });
     }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     updatePos();
     window.addEventListener("scroll", updatePos, true);
     window.addEventListener("resize", updatePos);
+    window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("scroll", updatePos, true);
       window.removeEventListener("resize", updatePos);
+      window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
@@ -563,9 +568,7 @@ export default function Home() {
                   <th className="px-4 py-3 text-center">
                     <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Consensus</span>
                   </th>
-                  <th className="px-4 py-3 text-center">
-                    <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Fair?</span>
-                  </th>
+                  <th className="px-4 py-3 w-8" />
                 </tr>
               </thead>
               <tbody>
@@ -644,9 +647,12 @@ export default function Home() {
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-xs font-mono text-muted-foreground">
-                                    {coin.symbol}
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-mono text-muted-foreground">
+                                      {coin.symbol}
+                                    </span>
+                                    <WhyFairTooltip text={coin.whyFair} coinName={coin.name} />
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -703,14 +709,11 @@ export default function Home() {
                               </span>
                             </td>
 
-                            {/* Why Fair + expand indicator */}
-                            <td className="px-4 py-4 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <WhyFairTooltip text={coin.whyFair} coinName={coin.name} />
-                                <span className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
-                                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                </span>
-                              </div>
+                            {/* Expand indicator */}
+                            <td className="px-4 py-4 text-center w-8">
+                              <span className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors inline-flex">
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </span>
                             </td>
                           </motion.tr>
 
