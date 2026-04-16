@@ -33,6 +33,10 @@ export interface FairLaunchCoin {
   website?: string | null;
   explorer?: string | null;
   github?: string | null;
+  /** Annual staking/yield APY percentage, null if not applicable */
+  stakingApy?: number | null;
+  /** Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging) */
+  yieldType?: string | null;
 }
 
 export interface FairLaunchCoinsResponse {

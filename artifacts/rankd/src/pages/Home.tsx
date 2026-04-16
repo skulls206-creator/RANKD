@@ -11,14 +11,14 @@ import { formatMoney, formatPrice, formatNumber, formatPercent } from "@/lib/for
 import {
   Search, RefreshCw, TrendingUp, TrendingDown, Shield, Info,
   Award, Globe, ExternalLink, Github, ChevronDown, ChevronUp,
-  Cpu, Activity,
+  Cpu, Activity, Percent,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change24h" | "launchYear";
+type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change24h" | "launchYear" | "stakingApy";
 type SortDir = "asc" | "desc";
 
 interface WhyFairTooltipProps {
@@ -111,7 +111,7 @@ function SkeletonRow({ index }: { index: number }) {
       transition={{ delay: index * 0.03 }}
       className="border-b border-border"
     >
-      {[48, 160, 120, 130, 130, 100, 80, 80, 40].map((w, i) => (
+      {[48, 160, 120, 130, 130, 100, 80, 80, 90, 40].map((w, i) => (
         <td key={i} className="px-4 py-4">
           <div
             className="h-4 rounded bg-muted animate-pulse"
@@ -188,73 +188,20 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-6 p-6">
-      {/* Left: Identity + links */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <CoinLogo imageUrl={coin.imageUrl} name={coin.name} symbol={coin.symbol} size="lg" />
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-display font-bold text-foreground">{coin.name}</h2>
-              {coin.isFeatured && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30">
-                  <Award className="w-3 h-3" /> Featured
-                </span>
-              )}
-            </div>
-            <span className="text-sm font-mono text-muted-foreground">{coin.symbol} · Rank #{coin.rank}</span>
+      {/* Left: Fair launch story */}
+      <div className="flex flex-col gap-3">
+        <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Fair Launch Story</div>
+        <div className="bg-background rounded-lg border border-border p-4 flex flex-col gap-3 h-full">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary flex-shrink-0" />
+            <span className="text-sm font-semibold text-foreground">Verified Fair Launch</span>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-background rounded-lg border border-border p-3">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Price</div>
-            <div className="text-lg font-mono font-bold text-foreground">{formatPrice(coin.price)}</div>
-          </div>
-          <div className="bg-background rounded-lg border border-border p-3">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">24h Change</div>
-            <div className={`text-lg font-mono font-bold flex items-center gap-1 ${isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-muted-foreground"}`}>
-              {isPositive && <TrendingUp className="w-4 h-4" />}
-              {isNegative && <TrendingDown className="w-4 h-4" />}
-              {formatPercent(coin.change24h)}
+          <p className="text-sm text-muted-foreground leading-relaxed">{coin.whyFair}</p>
+          <div className="mt-auto pt-2 border-t border-border">
+            <div className="text-xs text-muted-foreground">
+              No pre-mine · No VC allocation · No insider wallets
             </div>
           </div>
-          <div className="bg-background rounded-lg border border-border p-3">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Market Cap</div>
-            <div className="text-sm font-mono font-semibold text-foreground">{formatMoney(coin.marketCap)}</div>
-          </div>
-          <div className="bg-background rounded-lg border border-border p-3">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Supply</div>
-            <div className="text-sm font-mono font-semibold text-foreground">{formatNumber(coin.circulatingSupply)}</div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Cpu className="w-3.5 h-3.5" />
-            <span className="font-mono">{coin.algorithm}</span>
-            <span className="text-border">·</span>
-            <span className="font-mono px-1.5 py-0.5 bg-muted rounded">{coin.consensusType}</span>
-            <span className="text-border">·</span>
-            <span>{coin.launchYear}</span>
-          </div>
-
-          {links.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-1">
-              {links.map(({ href, icon: Icon, label }) => (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                  <ExternalLink className="w-3 h-3 opacity-60" />
-                </a>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -318,20 +265,86 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
         </div>
       </div>
 
-      {/* Right: Fair launch story */}
-      <div className="flex flex-col gap-3">
-        <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Fair Launch Story</div>
-        <div className="bg-background rounded-lg border border-border p-4 flex flex-col gap-3 h-full">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary flex-shrink-0" />
-            <span className="text-sm font-semibold text-foreground">Verified Fair Launch</span>
+      {/* Right: Identity + links */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <CoinLogo imageUrl={coin.imageUrl} name={coin.name} symbol={coin.symbol} size="lg" />
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl font-display font-bold text-foreground">{coin.name}</h2>
+              {coin.isFeatured && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30">
+                  <Award className="w-3 h-3" /> Featured
+                </span>
+              )}
+            </div>
+            <span className="text-sm font-mono text-muted-foreground">{coin.symbol} · Rank #{coin.rank}</span>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">{coin.whyFair}</p>
-          <div className="mt-auto pt-2 border-t border-border">
-            <div className="text-xs text-muted-foreground">
-              No pre-mine · No VC allocation · No insider wallets
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-background rounded-lg border border-border p-3">
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Price</div>
+            <div className="text-lg font-mono font-bold text-foreground">{formatPrice(coin.price)}</div>
+          </div>
+          <div className="bg-background rounded-lg border border-border p-3">
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">24h Change</div>
+            <div className={`text-lg font-mono font-bold flex items-center gap-1 ${isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-muted-foreground"}`}>
+              {isPositive && <TrendingUp className="w-4 h-4" />}
+              {isNegative && <TrendingDown className="w-4 h-4" />}
+              {formatPercent(coin.change24h)}
             </div>
           </div>
+          <div className="bg-background rounded-lg border border-border p-3">
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Market Cap</div>
+            <div className="text-sm font-mono font-semibold text-foreground">{formatMoney(coin.marketCap)}</div>
+          </div>
+          <div className="bg-background rounded-lg border border-border p-3">
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Supply</div>
+            <div className="text-sm font-mono font-semibold text-foreground">{formatNumber(coin.circulatingSupply)}</div>
+          </div>
+          {coin.stakingApy != null && (
+            <div className="col-span-2 bg-amber-950/20 rounded-lg border border-primary/30 p-3">
+              <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Percent className="w-3 h-3" /> Staking Yield
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-mono font-bold text-primary">{coin.stakingApy}% APY</div>
+                {coin.yieldType && (
+                  <span className="text-xs font-mono px-1.5 py-0.5 bg-primary/20 text-primary rounded">{coin.yieldType}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Cpu className="w-3.5 h-3.5" />
+            <span className="font-mono">{coin.algorithm}</span>
+            <span className="text-border">·</span>
+            <span className="font-mono px-1.5 py-0.5 bg-muted rounded">{coin.consensusType}</span>
+            <span className="text-border">·</span>
+            <span>{coin.launchYear}</span>
+          </div>
+
+          {links.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-1">
+              {links.map(({ href, icon: Icon, label }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -404,6 +417,7 @@ export default function Home() {
       case "circulatingSupply": aVal = a.circulatingSupply ?? -Infinity; bVal = b.circulatingSupply ?? -Infinity; break;
       case "change24h": aVal = a.change24h ?? -Infinity; bVal = b.change24h ?? -Infinity; break;
       case "launchYear": aVal = a.launchYear; bVal = b.launchYear; break;
+      case "stakingApy": aVal = a.stakingApy ?? -Infinity; bVal = b.stakingApy ?? -Infinity; break;
       default: aVal = a.rank; bVal = b.rank;
     }
     return sortDir === "asc" ? aVal - bVal : bVal - aVal;
@@ -568,6 +582,9 @@ export default function Home() {
                   <th className="px-4 py-3 text-center">
                     <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Consensus</span>
                   </th>
+                  <th className="px-4 py-3 text-right">
+                    <SortButton field="stakingApy" label="Yield" />
+                  </th>
                   <th className="px-4 py-3 w-8" />
                 </tr>
               </thead>
@@ -576,7 +593,7 @@ export default function Home() {
                   Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} index={i} />)
                 ) : coinsError ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center">
+                    <td colSpan={10} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Info className="w-8 h-8 text-muted-foreground" />
                         <p className="text-muted-foreground">Failed to load market data.</p>
@@ -592,7 +609,7 @@ export default function Home() {
                   </tr>
                 ) : sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-16 text-center">
+                    <td colSpan={10} className="px-4 py-16 text-center">
                       <p className="text-muted-foreground">No coins found matching "{search}"</p>
                     </td>
                   </tr>
@@ -709,6 +726,22 @@ export default function Home() {
                               </span>
                             </td>
 
+                            {/* Yield */}
+                            <td className="px-4 py-4 text-right">
+                              {coin.stakingApy != null ? (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="font-mono text-sm tabular-nums text-amber-400 font-semibold">
+                                    {coin.stakingApy}%
+                                  </span>
+                                  {coin.yieldType && (
+                                    <span className="text-xs font-mono text-muted-foreground">{coin.yieldType}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="font-mono text-sm text-muted-foreground/40">—</span>
+                              )}
+                            </td>
+
                             {/* Expand indicator */}
                             <td className="px-4 py-4 text-center w-8">
                               <span className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors inline-flex">
@@ -729,7 +762,7 @@ export default function Home() {
                                 className={`border-b border-border ${coin.isFeatured ? "border-l-2 border-l-primary" : ""}`}
                               >
                                 <td
-                                  colSpan={9}
+                                  colSpan={10}
                                   className={`p-0 ${coin.isFeatured ? "bg-amber-950/10" : "bg-card/40"}`}
                                 >
                                   <motion.div

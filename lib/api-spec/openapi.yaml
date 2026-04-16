@@ -156,6 +156,14 @@ components:
         github:
           type: string
           nullable: true
+        stakingApy:
+          type: number
+          nullable: true
+          description: Annual staking/yield APY percentage, null if not applicable
+        yieldType:
+          type: string
+          nullable: true
+          description: Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging)
       required:
         - rank
         - id

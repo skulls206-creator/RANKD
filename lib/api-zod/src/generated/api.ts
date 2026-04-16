@@ -48,6 +48,8 @@ export const GetFairLaunchCoinsResponse = zod.object({
       website: zod.string().nullish(),
       explorer: zod.string().nullish(),
       github: zod.string().nullish(),
+      stakingApy: zod.number().nullish().describe("Annual staking/yield APY percentage, null if not applicable"),
+      yieldType: zod.string().nullish().describe("Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging)"),
     }),
   ),
   lastUpdated: zod.string().describe("ISO timestamp of last data fetch"),

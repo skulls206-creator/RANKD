@@ -13,6 +13,8 @@ export interface FairLaunchCoinMeta {
   website?: string;
   explorer?: string;
   github?: string;
+  stakingApy?: number | null;
+  yieldType?: string | null;
 }
 
 export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
@@ -127,6 +129,8 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Fair fork of Zcash in 2017 with no additional pre-mine or ICO. Community-driven from the split, treasury funded transparently by block rewards with public governance.",
     isFeatured: false,
+    stakingApy: 3.5,
+    yieldType: "Secure Node",
   },
   {
     id: "nano",
@@ -211,6 +215,8 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched as ZelCash with no pre-mine, PoW mined. Equihash algorithm, community-built decentralized infrastructure network from day one.",
     isFeatured: false,
+    stakingApy: 25,
+    yieldType: "Node Operator",
   },
   {
     id: "ergo",
@@ -309,6 +315,8 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "First proof-of-stake coin, mined from genesis with PoW distribution then transitioning to PoS. No pre-mine, the original energy-efficient alternative.",
     isFeatured: false,
+    stakingApy: 1,
+    yieldType: "PoS Minting",
   },
   {
     id: "zcoin",
@@ -365,6 +373,8 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched as Burst in 2014 with no pre-mine and no ICO. Uses Proof of Capacity (hard-drive mining) for broad participation. Community rebranded to Signum; no insiders.",
     isFeatured: false,
+    stakingApy: 5,
+    yieldType: "Forging",
   },
   {
     id: "crp-crypton",
@@ -381,6 +391,8 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched inside the Utopia P2P ecosystem with no pre-mine, limited and stable emissions from block 1. Privacy-focused, community-mined from genesis with zero insider allocation.",
     isFeatured: true,
+    stakingApy: 1,
+    yieldType: "PoS Staking",
   },
 ];
 

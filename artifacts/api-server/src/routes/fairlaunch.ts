@@ -200,6 +200,8 @@ function buildCoinResponse(
     website: meta.website ?? null,
     explorer: meta.explorer ?? null,
     github: meta.github ?? null,
+    stakingApy: meta.stakingApy ?? null,
+    yieldType: meta.yieldType ?? null,
   };
 }
 
