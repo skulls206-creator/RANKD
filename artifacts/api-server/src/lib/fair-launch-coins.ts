@@ -1,5 +1,6 @@
 export interface FairLaunchCoinMeta {
   id: string;
+  coinPaprikaId?: string;
   name: string;
   symbol: string;
   launchYear: number;
@@ -200,18 +201,23 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     isFeatured: false,
   },
   {
-    id: "CRP",
+    id: "crp-crypton",
+    coinPaprikaId: "crp-crypton",
     name: "Crypton",
     symbol: "CRP",
     launchYear: 2019,
     consensusType: "PoW/PoS",
     whyFair:
-      "Launched inside the Utopia P2P ecosystem with no pre-mine, limited and stable emissions from block 1. Privacy-focused, community-mined from genesis with zero insider allocation. Not listed on centralized exchanges — pure peer-to-peer.",
+      "Launched inside the Utopia P2P ecosystem with no pre-mine, limited and stable emissions from block 1. Privacy-focused, community-mined from genesis with zero insider allocation.",
     isFeatured: true,
   },
 ];
 
-export const COIN_GECKO_IDS = FAIR_LAUNCH_COINS
-  .filter((c) => c.id !== "CRP")
+export const COINGECKO_IDS = FAIR_LAUNCH_COINS
+  .filter((c) => !c.coinPaprikaId)
   .map((c) => c.id)
   .join(",");
+
+export const COINPAPRIKA_COINS = FAIR_LAUNCH_COINS.filter(
+  (c) => c.coinPaprikaId != null,
+);

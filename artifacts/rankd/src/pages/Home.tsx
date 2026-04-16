@@ -468,7 +468,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="text-center space-y-1 pb-8">
           <p className="text-xs text-muted-foreground font-mono">
-            Data sourced from CoinGecko &middot; Refreshes every 60 seconds
+            Data sourced from CoinGecko &amp; CoinPaprika &middot; Refreshes every 60 seconds
           </p>
           <p className="text-xs text-muted-foreground/60">
             RANKD tracks only coins that launched fair — mined from genesis with no pre-mine, no team allocations, no VC wallets.
