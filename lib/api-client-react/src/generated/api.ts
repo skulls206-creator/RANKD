@@ -209,8 +209,8 @@ export function useGetFairLaunchCoins<
 }
 
 /**
- * Returns 7-day price chart data for a coin
- * @summary Get coin chart
+ * Returns hourly price data points for the last 7 days. Returns empty array for coins without chart data.
+ * @summary Get 7-day price chart for a coin
  */
 export const getGetCoinChartUrl = (id: string) => {
   return `/api/fairlaunch/coins/${id}/chart`;
@@ -248,11 +248,16 @@ export const getGetCoinChartQueryOptions = <
 
   const queryKey = queryOptions?.queryKey ?? getGetCoinChartQueryKey(id);
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getCoinChart>>
-  > = ({ signal }) => getCoinChart(id, { signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCoinChart>>> = ({
+    signal,
+  }) => getCoinChart(id, { signal, ...requestOptions });
 
-  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
     Awaited<ReturnType<typeof getCoinChart>>,
     TError,
     TData
@@ -265,7 +270,7 @@ export type GetCoinChartQueryResult = NonNullable<
 export type GetCoinChartQueryError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Get coin chart
+ * @summary Get 7-day price chart for a coin
  */
 
 export function useGetCoinChart<

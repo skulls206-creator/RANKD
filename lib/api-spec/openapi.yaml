@@ -164,6 +164,18 @@ components:
           type: string
           nullable: true
           description: Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging)
+        softwareVersion:
+          type: string
+          nullable: true
+          description: Latest software release tag (e.g. v1.3.1278)
+        lastReleasedAt:
+          type: string
+          nullable: true
+          description: ISO date string of the latest software release
+        activeNodes:
+          type: number
+          nullable: true
+          description: Active node/miner count (available for CRP via Utopia explorer)
       required:
         - rank
         - id

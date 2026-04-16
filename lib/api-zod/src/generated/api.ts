@@ -48,8 +48,32 @@ export const GetFairLaunchCoinsResponse = zod.object({
       website: zod.string().nullish(),
       explorer: zod.string().nullish(),
       github: zod.string().nullish(),
-      stakingApy: zod.number().nullish().describe("Annual staking/yield APY percentage, null if not applicable"),
-      yieldType: zod.string().nullish().describe("Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging)"),
+      stakingApy: zod
+        .number()
+        .nullish()
+        .describe(
+          "Annual staking\/yield APY percentage, null if not applicable",
+        ),
+      yieldType: zod
+        .string()
+        .nullish()
+        .describe(
+          "Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging)",
+        ),
+      softwareVersion: zod
+        .string()
+        .nullish()
+        .describe("Latest software release tag (e.g. v1.3.1278)"),
+      lastReleasedAt: zod
+        .string()
+        .nullish()
+        .describe("ISO date string of the latest software release"),
+      activeNodes: zod
+        .number()
+        .nullish()
+        .describe(
+          "Active node\/miner count (available for CRP via Utopia explorer)",
+        ),
     }),
   ),
   lastUpdated: zod.string().describe("ISO timestamp of last data fetch"),
@@ -57,16 +81,20 @@ export const GetFairLaunchCoinsResponse = zod.object({
 });
 
 /**
- * Returns 7-day price chart data for a coin
- * @summary Get coin chart
+ * Returns hourly price data points for the last 7 days. Returns empty array for coins without chart data.
+ * @summary Get 7-day price chart for a coin
  */
-export const GetCoinChartPathParams = zod.object({
-  id: zod.string().describe("Coin ID"),
+export const GetCoinChartParams = zod.object({
+  id: zod.coerce
+    .string()
+    .describe("Coin ID (matches the id field from the coins list)"),
 });
 
 export const GetCoinChartResponse = zod.object({
   id: zod.string(),
-  prices: zod.array(zod.array(zod.number())).describe("Array of [timestamp_ms, price_usd] tuples"),
+  prices: zod
+    .array(zod.array(zod.number()))
+    .describe("Array of [timestamp_ms, price_usd] tuples"),
   hasData: zod.boolean(),
 });
 

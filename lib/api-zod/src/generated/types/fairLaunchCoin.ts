@@ -30,4 +30,14 @@ export interface FairLaunchCoin {
   website?: string | null;
   explorer?: string | null;
   github?: string | null;
+  /** Annual staking/yield APY percentage, null if not applicable */
+  stakingApy?: number | null;
+  /** Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging) */
+  yieldType?: string | null;
+  /** Latest software release tag (e.g. v1.3.1278) */
+  softwareVersion?: string | null;
+  /** ISO date string of the latest software release */
+  lastReleasedAt?: string | null;
+  /** Active node/miner count (available for CRP via Utopia explorer) */
+  activeNodes?: number | null;
 }

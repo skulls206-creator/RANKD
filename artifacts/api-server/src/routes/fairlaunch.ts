@@ -49,6 +49,20 @@ interface UtopiaExplorerBlock {
   created_at: string;
 }
 
+interface GitHubRelease {
+  tag_name: string;
+  published_at: string;
+}
+
+interface GitHubReleaseCache {
+  softwareVersion: string | null;
+  lastReleasedAt: string | null;
+  fetchedAt: Date;
+}
+
+const GITHUB_CACHE_TTL_MS = 6 * 60 * 60_000;
+const githubReleaseCache = new Map<string, GitHubReleaseCache>();
+
 interface NormalizedMarketData {
   id: string;
   price: number | null;
@@ -56,6 +70,7 @@ interface NormalizedMarketData {
   circulatingSupply: number | null;
   change24h: number | null;
   imageUrl: string | null;
+  activeNodes?: number | null;
 }
 
 interface CacheEntry {
@@ -84,18 +99,62 @@ async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
   return response.json() as Promise<CoinGeckoMarketData[]>;
 }
 
-async function fetchUtopiaSupply(): Promise<number | null> {
+interface UtopiaData {
+  supply: number | null;
+  activeNodes: number | null;
+}
+
+async function fetchUtopiaData(): Promise<UtopiaData> {
   try {
     const url = "https://utopian.is/api/explorer/blocks/get";
     const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) return null;
+    if (!response.ok) return { supply: null, activeNodes: null };
     const blocks = (await response.json()) as UtopiaExplorerBlock[];
     const latest = blocks?.[0];
-    if (!latest?.CRPSupply) return null;
-    const supply = parseFloat(latest.CRPSupply);
-    return isNaN(supply) ? null : supply;
+    if (!latest) return { supply: null, activeNodes: null };
+    const supply = latest.CRPSupply ? parseFloat(latest.CRPSupply) : null;
+    const activeNodes = latest.miningThreads ? parseInt(latest.miningThreads, 10) : null;
+    return {
+      supply: supply != null && !isNaN(supply) ? supply : null,
+      activeNodes: activeNodes != null && !isNaN(activeNodes) ? activeNodes : null,
+    };
   } catch {
-    return null;
+    return { supply: null, activeNodes: null };
+  }
+}
+
+async function fetchGitHubRelease(githubUrl: string): Promise<GitHubReleaseCache> {
+  const cached = githubReleaseCache.get(githubUrl);
+  if (cached && Date.now() - cached.fetchedAt.getTime() < GITHUB_CACHE_TTL_MS) {
+    return cached;
+  }
+  const nullEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date() };
+  try {
+    const match = githubUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+    if (!match) {
+      githubReleaseCache.set(githubUrl, nullEntry);
+      return nullEntry;
+    }
+    const repo = match[1].replace(/\.git$/, "");
+    const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
+    const response = await fetch(apiUrl, {
+      headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+    });
+    if (!response.ok) {
+      githubReleaseCache.set(githubUrl, nullEntry);
+      return nullEntry;
+    }
+    const data = (await response.json()) as GitHubRelease;
+    const entry: GitHubReleaseCache = {
+      softwareVersion: data.tag_name ?? null,
+      lastReleasedAt: data.published_at ?? null,
+      fetchedAt: new Date(),
+    };
+    githubReleaseCache.set(githubUrl, entry);
+    return entry;
+  } catch {
+    githubReleaseCache.set(githubUrl, nullEntry);
+    return nullEntry;
   }
 }
 
@@ -104,17 +163,17 @@ async function fetchCoinPaprikaData(
 ): Promise<NormalizedMarketData | null> {
   if (!meta.coinPaprikaId) return null;
   try {
-    const [paprikaResp, utopiaSupply] = await Promise.all([
+    const [paprikaResp, utopiaData] = await Promise.all([
       fetch(`https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(meta.coinPaprikaId)}`, {
         headers: { Accept: "application/json" },
       }),
-      meta.utopiaExplorer ? fetchUtopiaSupply() : Promise.resolve(null),
+      meta.utopiaExplorer ? fetchUtopiaData() : Promise.resolve(null),
     ]);
 
     if (!paprikaResp.ok) return null;
     const data = (await paprikaResp.json()) as CoinPaprikaMarketData;
     const price = data.quotes?.USD?.price ?? null;
-    const circulatingSupply = utopiaSupply ?? data.circulating_supply ?? data.total_supply ?? null;
+    const circulatingSupply = utopiaData?.supply ?? data.circulating_supply ?? data.total_supply ?? null;
     const marketCap = price != null && circulatingSupply != null
       ? price * circulatingSupply
       : data.quotes?.USD?.market_cap ?? null;
@@ -126,6 +185,7 @@ async function fetchCoinPaprikaData(
       circulatingSupply,
       change24h: data.quotes?.USD?.percent_change_24h ?? null,
       imageUrl: meta.logoUrl ?? `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
+      activeNodes: utopiaData?.activeNodes ?? null,
     };
   } catch {
     return null;
@@ -181,7 +241,10 @@ function buildCoinResponse(
   meta: FairLaunchCoinMeta,
   rank: number,
   live: NormalizedMarketData,
+  githubRelease: GitHubReleaseCache,
 ) {
+  const softwareVersion = meta.softwareVersion ?? githubRelease.softwareVersion ?? null;
+  const lastReleasedAt = meta.lastReleasedAt ?? githubRelease.lastReleasedAt ?? null;
   return {
     rank,
     id: meta.id,
@@ -202,6 +265,9 @@ function buildCoinResponse(
     github: meta.github ?? null,
     stakingApy: meta.stakingApy ?? null,
     yieldType: meta.yieldType ?? null,
+    softwareVersion,
+    lastReleasedAt,
+    activeNodes: meta.activeNodes ?? live.activeNodes ?? null,
   };
 }
 
@@ -253,8 +319,17 @@ router.get(
       return a.meta.name.localeCompare(b.meta.name);
     });
 
+    const nullGitHubEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date(0) };
+    const githubResults = await Promise.all(
+      allWithData.map(({ meta }) =>
+        meta.github && !meta.softwareVersion
+          ? fetchGitHubRelease(meta.github)
+          : Promise.resolve(nullGitHubEntry),
+      ),
+    );
+
     const globallyRanked = allWithData.map(({ meta, live }, idx) =>
-      buildCoinResponse(meta, idx + 1, live),
+      buildCoinResponse(meta, idx + 1, live, githubResults[idx]),
     );
 
     let ranked = globallyRanked;

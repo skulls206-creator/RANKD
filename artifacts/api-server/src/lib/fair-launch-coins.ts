@@ -15,6 +15,9 @@ export interface FairLaunchCoinMeta {
   github?: string;
   stakingApy?: number | null;
   yieldType?: string | null;
+  softwareVersion?: string | null;
+  lastReleasedAt?: string | null;
+  activeNodes?: number | null;
 }
 
 export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
@@ -393,6 +396,8 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     isFeatured: true,
     stakingApy: 1,
     yieldType: "PoS Staking",
+    softwareVersion: "v1.3.1278",
+    lastReleasedAt: "2026-04-16T00:00:00.000Z",
   },
 ];
 

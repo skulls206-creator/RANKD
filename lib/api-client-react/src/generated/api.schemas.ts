@@ -37,6 +37,12 @@ export interface FairLaunchCoin {
   stakingApy?: number | null;
   /** Type of yield mechanism (e.g. PoS Staking, Node Operator, Forging) */
   yieldType?: string | null;
+  /** Latest software release tag (e.g. v1.3.1278) */
+  softwareVersion?: string | null;
+  /** ISO date string of the latest software release */
+  lastReleasedAt?: string | null;
+  /** Active node/miner count (available for CRP via Utopia explorer) */
+  activeNodes?: number | null;
 }
 
 export interface FairLaunchCoinsResponse {
@@ -72,8 +78,4 @@ export type GetFairLaunchCoinsParams = {
    * Optional search query to filter coins by name or symbol
    */
   search?: string;
-};
-
-export type GetCoinChartParams = {
-  id: string;
 };

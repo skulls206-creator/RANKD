@@ -5,6 +5,7 @@ import {
   useGetCoinChart,
   getGetFairLaunchCoinsQueryKey,
   getGetFairLaunchStatsQueryKey,
+  getGetCoinChartQueryKey,
 } from "@workspace/api-client-react";
 import type { FairLaunchCoin } from "@workspace/api-client-react";
 import { formatMoney, formatPrice, formatNumber, formatPercent } from "@/lib/format";
@@ -18,7 +19,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change24h" | "launchYear" | "stakingApy";
+type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change24h" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
 type SortDir = "asc" | "desc";
 
 interface WhyFairTooltipProps {
@@ -111,7 +112,7 @@ function SkeletonRow({ index }: { index: number }) {
       transition={{ delay: index * 0.03 }}
       className="border-b border-border"
     >
-      {[48, 160, 120, 130, 130, 100, 80, 80, 90, 40].map((w, i) => (
+      {[48, 160, 120, 130, 130, 100, 80, 80, 90, 80, 90, 70, 40].map((w, i) => (
         <td key={i} className="px-4 py-4">
           <div
             className="h-4 rounded bg-muted animate-pulse"
@@ -151,6 +152,24 @@ function CoinLogo({ imageUrl, name, symbol, size = "sm" }: CoinLogo) {
   );
 }
 
+function formatRelativeTime(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return "—";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return "just now";
+  const diffDays = Math.floor(diffMs / 86_400_000);
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 30) return `${diffDays} days ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths === 1) return "1 month ago";
+  if (diffMonths < 12) return `${diffMonths} months ago`;
+  const diffYears = Math.floor(diffDays / 365);
+  if (diffYears === 1) return "1 year ago";
+  return `${diffYears} years ago`;
+}
+
 const CHART_TOOLTIP_FORMATTER = (value: number) =>
   [`$${value < 0.01 ? value.toFixed(6) : value < 1 ? value.toFixed(4) : value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Price"];
 
@@ -163,7 +182,7 @@ interface CoinDetailPanelProps {
 
 function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
   const { data: chartData, isLoading: chartLoading } = useGetCoinChart(coin.id, {
-    query: { staleTime: 10 * 60_000 },
+    query: { queryKey: getGetCoinChartQueryKey(coin.id), staleTime: 10 * 60_000 },
   });
 
   const isPositive = coin.change24h != null && coin.change24h > 0;
@@ -408,6 +427,11 @@ export default function Home() {
   const coins = coinsData?.coins ?? [];
 
   const sorted = [...coins].sort((a, b) => {
+    if (sortField === "softwareVersion") {
+      const aStr = a.softwareVersion ?? "";
+      const bStr = b.softwareVersion ?? "";
+      return sortDir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+    }
     let aVal: number;
     let bVal: number;
     switch (sortField) {
@@ -418,6 +442,12 @@ export default function Home() {
       case "change24h": aVal = a.change24h ?? -Infinity; bVal = b.change24h ?? -Infinity; break;
       case "launchYear": aVal = a.launchYear; bVal = b.launchYear; break;
       case "stakingApy": aVal = a.stakingApy ?? -Infinity; bVal = b.stakingApy ?? -Infinity; break;
+      case "lastReleasedAt": {
+        const aTs = a.lastReleasedAt ? new Date(a.lastReleasedAt).getTime() : -Infinity;
+        const bTs = b.lastReleasedAt ? new Date(b.lastReleasedAt).getTime() : -Infinity;
+        aVal = aTs; bVal = bTs; break;
+      }
+      case "activeNodes": aVal = a.activeNodes ?? -Infinity; bVal = b.activeNodes ?? -Infinity; break;
       default: aVal = a.rank; bVal = b.rank;
     }
     return sortDir === "asc" ? aVal - bVal : bVal - aVal;
@@ -585,6 +615,15 @@ export default function Home() {
                   <th className="px-4 py-3 text-right">
                     <SortButton field="stakingApy" label="Yield" />
                   </th>
+                  <th className="px-4 py-3 text-center">
+                    <SortButton field="softwareVersion" label="Version" />
+                  </th>
+                  <th className="px-4 py-3 text-center">
+                    <SortButton field="lastReleasedAt" label="Last Release" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <SortButton field="activeNodes" label="Active Nodes" />
+                  </th>
                   <th className="px-4 py-3 w-8" />
                 </tr>
               </thead>
@@ -593,7 +632,7 @@ export default function Home() {
                   Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} index={i} />)
                 ) : coinsError ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-16 text-center">
+                    <td colSpan={13} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Info className="w-8 h-8 text-muted-foreground" />
                         <p className="text-muted-foreground">Failed to load market data.</p>
@@ -609,7 +648,7 @@ export default function Home() {
                   </tr>
                 ) : sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-16 text-center">
+                    <td colSpan={13} className="px-4 py-16 text-center">
                       <p className="text-muted-foreground">No coins found matching "{search}"</p>
                     </td>
                   </tr>
@@ -742,6 +781,35 @@ export default function Home() {
                               )}
                             </td>
 
+                            {/* Version */}
+                            <td className="px-4 py-4 text-center">
+                              {coin.softwareVersion ? (
+                                <span className={`font-mono text-xs px-2 py-0.5 rounded ${coin.isFeatured ? "bg-primary/20 text-primary border border-primary/30" : "bg-muted text-muted-foreground"}`}>
+                                  {coin.softwareVersion}
+                                </span>
+                              ) : (
+                                <span className="font-mono text-xs text-muted-foreground/40">—</span>
+                              )}
+                            </td>
+
+                            {/* Last Release */}
+                            <td className="px-4 py-4 text-center">
+                              <span className={`font-mono text-xs ${coin.lastReleasedAt ? (coin.isFeatured ? "text-primary" : "text-muted-foreground") : "text-muted-foreground/40"}`}>
+                                {formatRelativeTime(coin.lastReleasedAt)}
+                              </span>
+                            </td>
+
+                            {/* Active Nodes */}
+                            <td className="px-4 py-4 text-right">
+                              {coin.activeNodes != null ? (
+                                <span className={`font-mono text-sm tabular-nums ${coin.isFeatured ? "text-primary font-semibold" : "text-foreground"}`}>
+                                  {coin.activeNodes.toLocaleString()}
+                                </span>
+                              ) : (
+                                <span className="font-mono text-sm text-muted-foreground/40">—</span>
+                              )}
+                            </td>
+
                             {/* Expand indicator */}
                             <td className="px-4 py-4 text-center w-8">
                               <span className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors inline-flex">
@@ -762,7 +830,7 @@ export default function Home() {
                                 className={`border-b border-border ${coin.isFeatured ? "border-l-2 border-l-primary" : ""}`}
                               >
                                 <td
-                                  colSpan={10}
+                                  colSpan={13}
                                   className={`p-0 ${coin.isFeatured ? "bg-amber-950/10" : "bg-card/40"}`}
                                 >
                                   <motion.div
