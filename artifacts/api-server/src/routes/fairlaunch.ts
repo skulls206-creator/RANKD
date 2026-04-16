@@ -3,6 +3,7 @@ import {
   GetFairLaunchCoinsQueryParams,
   GetFairLaunchCoinsResponse,
   GetFairLaunchStatsResponse,
+  GetCoinChartResponse,
 } from "@workspace/api-zod";
 import {
   FAIR_LAUNCH_COINS,
@@ -63,8 +64,16 @@ interface CacheEntry {
   fetchedAt: Date;
 }
 
+interface ChartCacheEntry {
+  prices: number[][];
+  fetchedAt: Date;
+}
+
 let cache: CacheEntry | null = null;
 const CACHE_TTL_MS = 60_000;
+
+const chartCache = new Map<string, ChartCacheEntry>();
+const CHART_CACHE_TTL_MS = 10 * 60_000;
 
 async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
   const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(COINGECKO_IDS)}&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h`;
@@ -184,9 +193,13 @@ function buildCoinResponse(
     change24h: live.change24h,
     launchYear: meta.launchYear,
     consensusType: meta.consensusType,
+    algorithm: meta.algorithm,
     whyFair: meta.whyFair,
     imageUrl: live.imageUrl,
     isFeatured: meta.isFeatured,
+    website: meta.website ?? null,
+    explorer: meta.explorer ?? null,
+    github: meta.github ?? null,
   };
 }
 
@@ -262,6 +275,50 @@ router.get(
     });
 
     res.json(result);
+  },
+);
+
+router.get(
+  "/fairlaunch/coins/:id/chart",
+  async (req, res): Promise<void> => {
+    const { id } = req.params;
+
+    const meta = FAIR_LAUNCH_COINS.find((c) => c.id === id);
+    if (!meta) {
+      res.status(404).json({ error: "not_found", message: `Coin '${id}' not found` });
+      return;
+    }
+
+    if (meta.coinPaprikaId) {
+      const result = GetCoinChartResponse.parse({ id, prices: [], hasData: false });
+      res.json(result);
+      return;
+    }
+
+    const cached = chartCache.get(id);
+    if (cached && Date.now() - cached.fetchedAt.getTime() < CHART_CACHE_TTL_MS) {
+      const result = GetCoinChartResponse.parse({ id, prices: cached.prices, hasData: cached.prices.length > 0 });
+      res.json(result);
+      return;
+    }
+
+    try {
+      const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=7`;
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) {
+        const fallback = GetCoinChartResponse.parse({ id, prices: [], hasData: false });
+        res.json(fallback);
+        return;
+      }
+      const data = (await response.json()) as { prices: number[][] };
+      const prices = data.prices ?? [];
+      chartCache.set(id, { prices, fetchedAt: new Date() });
+      const result = GetCoinChartResponse.parse({ id, prices, hasData: prices.length > 0 });
+      res.json(result);
+    } catch {
+      const fallback = GetCoinChartResponse.parse({ id, prices: [], hasData: false });
+      res.json(fallback);
+    }
   },
 );
 

@@ -13,7 +13,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
+- **API codegen**: Orval (from OpenAPI spec) — generated files updated manually
 - **Build**: esbuild (CJS bundle)
 
 ## Key Commands
@@ -33,11 +33,13 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **Preview Path**: `/` (root)
 - **Purpose**: Fair-launch cryptocurrency tracker — only coins with no pre-mine, no VC allocations, mined from genesis
 - **Key Features**:
-  - Live market data from CoinGecko API (free tier)
-  - 20 curated fair-launch coins (BTC, LTC, XMR, DOGE, KAS, CRP, etc.)
-  - Crypton (CRP) featured with rank among fair-launch peers
+  - Live market data from CoinGecko (free tier) for 25 coins + CoinPaprika for Crypton (CRP)
+  - 26 curated fair-launch coins (BTC, LTC, XMR, DOGE, KAS, ZEN, NANO, XVG, ARRR, HNS, SIGNA, CRP, etc.)
+  - Crypton (CRP) featured with rank among fair-launch peers; price from CoinPaprika, supply from Utopia Explorer
   - Stats bar: total fair market cap, coin count, Crypton rank, top coin
-  - Search, sortable columns, "Why Fair" tooltips, 60s auto-refresh
+  - Search, sortable columns, "Why Fair" shield tooltips, 60s auto-refresh
+  - **Click-to-expand row detail panel**: 7-day recharts price chart, key stats, links (website/explorer/github), fair launch story
+  - Each coin has metadata: algorithm, website, explorer, github
 - **Design**: Dark mode, amber/orange accent, Space Grotesk + JetBrains Mono fonts
 
 ### API Server (`artifacts/api-server/`)
@@ -45,14 +47,24 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **Preview Path**: `/api`
 - **Routes**:
   - `GET /api/healthz` — health check
-  - `GET /api/fairlaunch/coins` — ranked list of fair-launch coins with live CoinGecko data
+  - `GET /api/fairlaunch/coins` — ranked list of fair-launch coins with live market data
+  - `GET /api/fairlaunch/coins/:id/chart` — 7-day hourly price data for a coin (10-min cache)
   - `GET /api/fairlaunch/stats` — aggregate stats (total market cap, Crypton rank, etc.)
-- **Caching**: CoinGecko responses cached for 60 seconds
+- **Caching**: Coins list cached 60 seconds; chart data cached 10 minutes per coin
+
+## Data Sources
+- **CoinGecko** (free tier): price, market cap, supply for all coins except CRP; 7-day chart data
+- **CoinPaprika**: price + 24h% for CRP (Crypton)
+- **Utopia P2P Explorer** (`utopian.is/api/explorer/blocks/get`): real CRP circulating supply
 
 ## Key Files
 
-- `artifacts/api-server/src/lib/fair-launch-coins.ts` — curated fair-launch coin metadata list
+- `artifacts/api-server/src/lib/fair-launch-coins.ts` — curated fair-launch coin metadata (26 coins)
 - `artifacts/api-server/src/routes/fairlaunch.ts` — fair-launch API route handlers
-- `artifacts/rankd/src/pages/Home.tsx` — main RANKD tracker UI
+- `artifacts/rankd/src/pages/Home.tsx` — main RANKD tracker UI with expandable row panels
 - `artifacts/rankd/src/lib/format.ts` — number/price formatting utilities
+- `artifacts/rankd/public/crp-logo.png` — Crypton crystal gem logo (128x128, transparent)
 - `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for API contracts)
+- `lib/api-zod/src/generated/api.ts` — Zod schemas (manually updated to match spec)
+- `lib/api-client-react/src/generated/api.ts` — React Query hooks (manually updated)
+- `lib/api-client-react/src/generated/api.schemas.ts` — TypeScript types (manually updated)

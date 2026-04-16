@@ -54,6 +54,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /fairlaunch/coins/{id}/chart:
+    get:
+      operationId: getCoinChart
+      tags: [fairlaunch]
+      summary: Get 7-day price chart for a coin
+      description: Returns hourly price data points for the last 7 days. Returns empty array for coins without chart data.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Coin ID (matches the id field from the coins list)
+      responses:
+        "200":
+          description: Price chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoinChartResponse"
+        "404":
+          description: Coin not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /fairlaunch/stats:
     get:
       operationId: getFairLaunchStats
@@ -108,6 +135,9 @@ components:
         consensusType:
           type: string
           description: e.g. PoW, PoS
+        algorithm:
+          type: string
+          description: Mining or consensus algorithm name
         whyFair:
           type: string
           description: Short explanation of fair launch credential
@@ -117,6 +147,15 @@ components:
         isFeatured:
           type: boolean
           description: Highlighted coin (e.g. Crypton CRP)
+        website:
+          type: string
+          nullable: true
+        explorer:
+          type: string
+          nullable: true
+        github:
+          type: string
+          nullable: true
       required:
         - rank
         - id
@@ -124,6 +163,7 @@ components:
         - symbol
         - launchYear
         - consensusType
+        - algorithm
         - whyFair
         - isFeatured
 
@@ -143,6 +183,25 @@ components:
         - coins
         - lastUpdated
         - totalCoins
+
+    CoinChartResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        prices:
+          type: array
+          description: Array of [timestamp_ms, price_usd] tuples
+          items:
+            type: array
+            items:
+              type: number
+        hasData:
+          type: boolean
+      required:
+        - id
+        - prices
+        - hasData
 
     FairLaunchStats:
       type: object

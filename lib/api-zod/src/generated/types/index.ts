@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./coinChartResponse";
 export * from "./errorResponse";
 export * from "./fairLaunchCoin";
 export * from "./fairLaunchCoinsResponse";

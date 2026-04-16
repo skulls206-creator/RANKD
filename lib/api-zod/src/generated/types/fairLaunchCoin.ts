@@ -20,9 +20,14 @@ export interface FairLaunchCoin {
   launchYear: number;
   /** e.g. PoW, PoS */
   consensusType: string;
+  /** Mining or consensus algorithm name */
+  algorithm: string;
   /** Short explanation of fair launch credential */
   whyFair: string;
   imageUrl?: string | null;
   /** Highlighted coin (e.g. Crypton CRP) */
   isFeatured: boolean;
+  website?: string | null;
+  explorer?: string | null;
+  github?: string | null;
 }

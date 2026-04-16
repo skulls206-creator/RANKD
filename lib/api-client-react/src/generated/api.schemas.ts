@@ -23,11 +23,16 @@ export interface FairLaunchCoin {
   launchYear: number;
   /** e.g. PoW, PoS */
   consensusType: string;
+  /** Mining or consensus algorithm name */
+  algorithm: string;
   /** Short explanation of fair launch credential */
   whyFair: string;
   imageUrl?: string | null;
   /** Highlighted coin (e.g. Crypton CRP) */
   isFeatured: boolean;
+  website?: string | null;
+  explorer?: string | null;
+  github?: string | null;
 }
 
 export interface FairLaunchCoinsResponse {
@@ -35,6 +40,13 @@ export interface FairLaunchCoinsResponse {
   /** ISO timestamp of last data fetch */
   lastUpdated: string;
   totalCoins: number;
+}
+
+export interface CoinChartResponse {
+  id: string;
+  /** Array of [timestamp_ms, price_usd] tuples */
+  prices: number[][];
+  hasData: boolean;
 }
 
 export interface FairLaunchStats {
@@ -56,4 +68,8 @@ export type GetFairLaunchCoinsParams = {
    * Optional search query to filter coins by name or symbol
    */
   search?: string;
+};
+
+export type GetCoinChartParams = {
+  id: string;
 };

@@ -14,6 +14,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CoinChartResponse,
   ErrorResponse,
   FairLaunchCoinsResponse,
   FairLaunchStats,
@@ -199,6 +200,89 @@ export function useGetFairLaunchCoins<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetFairLaunchCoinsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns 7-day price chart data for a coin
+ * @summary Get coin chart
+ */
+export const getGetCoinChartUrl = (id: string) => {
+  return `/api/fairlaunch/coins/${id}/chart`;
+};
+
+export const getCoinChart = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CoinChartResponse> => {
+  return customFetch<CoinChartResponse>(getGetCoinChartUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCoinChartQueryKey = (id: string) => {
+  return [`/api/fairlaunch/coins/${id}/chart`] as const;
+};
+
+export const getGetCoinChartQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCoinChart>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCoinChart>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCoinChartQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCoinChart>>
+  > = ({ signal }) => getCoinChart(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCoinChart>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCoinChartQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCoinChart>>
+>;
+export type GetCoinChartQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get coin chart
+ */
+
+export function useGetCoinChart<
+  TData = Awaited<ReturnType<typeof getCoinChart>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCoinChart>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCoinChartQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

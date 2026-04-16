@@ -39,15 +39,33 @@ export const GetFairLaunchCoinsResponse = zod.object({
       change24h: zod.number().nullish(),
       launchYear: zod.number(),
       consensusType: zod.string().describe("e.g. PoW, PoS"),
+      algorithm: zod.string().describe("Mining or consensus algorithm name"),
       whyFair: zod
         .string()
         .describe("Short explanation of fair launch credential"),
       imageUrl: zod.string().nullish(),
       isFeatured: zod.boolean().describe("Highlighted coin (e.g. Crypton CRP)"),
+      website: zod.string().nullish(),
+      explorer: zod.string().nullish(),
+      github: zod.string().nullish(),
     }),
   ),
   lastUpdated: zod.string().describe("ISO timestamp of last data fetch"),
   totalCoins: zod.number(),
+});
+
+/**
+ * Returns 7-day price chart data for a coin
+ * @summary Get coin chart
+ */
+export const GetCoinChartPathParams = zod.object({
+  id: zod.string().describe("Coin ID"),
+});
+
+export const GetCoinChartResponse = zod.object({
+  id: zod.string(),
+  prices: zod.array(zod.array(zod.number())).describe("Array of [timestamp_ms, price_usd] tuples"),
+  hasData: zod.boolean(),
 });
 
 /**
