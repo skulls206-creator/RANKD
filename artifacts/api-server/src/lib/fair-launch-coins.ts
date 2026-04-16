@@ -206,7 +206,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     id: "crp-crypton",
     coinPaprikaId: "crp-crypton",
     utopiaExplorer: true,
-    logoUrl: "https://crp.is/branding/200x200.png",
+    logoUrl: "/crp-logo.png",
     name: "Crypton",
     symbol: "CRP",
     launchYear: 2019,
