@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: fairlaunch
+    description: Fair launch cryptocurrency operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /fairlaunch/coins:
+    get:
+      operationId: getFairLaunchCoins
+      tags: [fairlaunch]
+      summary: Get fair launch coins
+      description: Returns ranked list of fair-launch cryptocurrencies with live market data from CoinGecko
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional search query to filter coins by name or symbol
+      responses:
+        "200":
+          description: List of fair launch coins ranked by market cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FairLaunchCoinsResponse"
+        "500":
+          description: Error fetching data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /fairlaunch/stats:
+    get:
+      operationId: getFairLaunchStats
+      tags: [fairlaunch]
+      summary: Get summary stats
+      description: Returns aggregate statistics for all tracked fair-launch coins
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FairLaunchStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +78,100 @@ components:
       required:
         - status
 
+    FairLaunchCoin:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Fair-launch rank by market cap
+        id:
+          type: string
+          description: CoinGecko coin ID
+        name:
+          type: string
+        symbol:
+          type: string
+        price:
+          type: number
+          nullable: true
+        marketCap:
+          type: number
+          nullable: true
+        circulatingSupply:
+          type: number
+          nullable: true
+        change24h:
+          type: number
+          nullable: true
+        launchYear:
+          type: integer
+        consensusType:
+          type: string
+          description: e.g. PoW, PoS
+        whyFair:
+          type: string
+          description: Short explanation of fair launch credential
+        imageUrl:
+          type: string
+          nullable: true
+        isFeatured:
+          type: boolean
+          description: Highlighted coin (e.g. Crypton CRP)
+      required:
+        - rank
+        - id
+        - name
+        - symbol
+        - launchYear
+        - consensusType
+        - whyFair
+        - isFeatured
+
+    FairLaunchCoinsResponse:
+      type: object
+      properties:
+        coins:
+          type: array
+          items:
+            $ref: "#/components/schemas/FairLaunchCoin"
+        lastUpdated:
+          type: string
+          description: ISO timestamp of last data fetch
+        totalCoins:
+          type: integer
+      required:
+        - coins
+        - lastUpdated
+        - totalCoins
+
+    FairLaunchStats:
+      type: object
+      properties:
+        totalMarketCap:
+          type: number
+        totalCoins:
+          type: integer
+        topCoin:
+          type: string
+        cryptonRank:
+          type: integer
+          nullable: true
+          description: Current rank of Crypton (CRP) in the fair-launch list
+        lastUpdated:
+          type: string
+      required:
+        - totalMarketCap
+        - totalCoins
+        - topCoin
+        - lastUpdated
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message

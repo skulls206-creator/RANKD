@@ -13,7 +13,13 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  FairLaunchCoinsResponse,
+  FairLaunchStats,
+  GetFairLaunchCoinsParams,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -92,6 +98,183 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns ranked list of fair-launch cryptocurrencies with live market data from CoinGecko
+ * @summary Get fair launch coins
+ */
+export const getGetFairLaunchCoinsUrl = (params?: GetFairLaunchCoinsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/fairlaunch/coins?${stringifiedParams}`
+    : `/api/fairlaunch/coins`;
+};
+
+export const getFairLaunchCoins = async (
+  params?: GetFairLaunchCoinsParams,
+  options?: RequestInit,
+): Promise<FairLaunchCoinsResponse> => {
+  return customFetch<FairLaunchCoinsResponse>(
+    getGetFairLaunchCoinsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetFairLaunchCoinsQueryKey = (
+  params?: GetFairLaunchCoinsParams,
+) => {
+  return [`/api/fairlaunch/coins`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFairLaunchCoinsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFairLaunchCoins>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: GetFairLaunchCoinsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFairLaunchCoins>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetFairLaunchCoinsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFairLaunchCoins>>
+  > = ({ signal }) => getFairLaunchCoins(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFairLaunchCoins>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFairLaunchCoinsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFairLaunchCoins>>
+>;
+export type GetFairLaunchCoinsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get fair launch coins
+ */
+
+export function useGetFairLaunchCoins<
+  TData = Awaited<ReturnType<typeof getFairLaunchCoins>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: GetFairLaunchCoinsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFairLaunchCoins>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFairLaunchCoinsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns aggregate statistics for all tracked fair-launch coins
+ * @summary Get summary stats
+ */
+export const getGetFairLaunchStatsUrl = () => {
+  return `/api/fairlaunch/stats`;
+};
+
+export const getFairLaunchStats = async (
+  options?: RequestInit,
+): Promise<FairLaunchStats> => {
+  return customFetch<FairLaunchStats>(getGetFairLaunchStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFairLaunchStatsQueryKey = () => {
+  return [`/api/fairlaunch/stats`] as const;
+};
+
+export const getGetFairLaunchStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFairLaunchStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFairLaunchStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFairLaunchStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFairLaunchStats>>
+  > = ({ signal }) => getFairLaunchStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFairLaunchStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFairLaunchStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFairLaunchStats>>
+>;
+export type GetFairLaunchStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get summary stats
+ */
+
+export function useGetFairLaunchStats<
+  TData = Awaited<ReturnType<typeof getFairLaunchStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFairLaunchStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFairLaunchStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

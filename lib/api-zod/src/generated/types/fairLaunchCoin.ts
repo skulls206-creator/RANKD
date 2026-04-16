@@ -5,9 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
 
 export interface FairLaunchCoin {
   /** Fair-launch rank by market cap */
@@ -29,31 +26,3 @@ export interface FairLaunchCoin {
   /** Highlighted coin (e.g. Crypton CRP) */
   isFeatured: boolean;
 }
-
-export interface FairLaunchCoinsResponse {
-  coins: FairLaunchCoin[];
-  /** ISO timestamp of last data fetch */
-  lastUpdated: string;
-  totalCoins: number;
-}
-
-export interface FairLaunchStats {
-  totalMarketCap: number;
-  totalCoins: number;
-  topCoin: string;
-  /** Current rank of Crypton (CRP) in the fair-launch list */
-  cryptonRank?: number | null;
-  lastUpdated: string;
-}
-
-export interface ErrorResponse {
-  error: string;
-  message: string;
-}
-
-export type GetFairLaunchCoinsParams = {
-  /**
-   * Optional search query to filter coins by name or symbol
-   */
-  search?: string;
-};

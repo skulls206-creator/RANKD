@@ -14,3 +14,53 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns ranked list of fair-launch cryptocurrencies with live market data from CoinGecko
+ * @summary Get fair launch coins
+ */
+export const GetFairLaunchCoinsQueryParams = zod.object({
+  search: zod.coerce
+    .string()
+    .optional()
+    .describe("Optional search query to filter coins by name or symbol"),
+});
+
+export const GetFairLaunchCoinsResponse = zod.object({
+  coins: zod.array(
+    zod.object({
+      rank: zod.number().describe("Fair-launch rank by market cap"),
+      id: zod.string().describe("CoinGecko coin ID"),
+      name: zod.string(),
+      symbol: zod.string(),
+      price: zod.number().nullish(),
+      marketCap: zod.number().nullish(),
+      circulatingSupply: zod.number().nullish(),
+      change24h: zod.number().nullish(),
+      launchYear: zod.number(),
+      consensusType: zod.string().describe("e.g. PoW, PoS"),
+      whyFair: zod
+        .string()
+        .describe("Short explanation of fair launch credential"),
+      imageUrl: zod.string().nullish(),
+      isFeatured: zod.boolean().describe("Highlighted coin (e.g. Crypton CRP)"),
+    }),
+  ),
+  lastUpdated: zod.string().describe("ISO timestamp of last data fetch"),
+  totalCoins: zod.number(),
+});
+
+/**
+ * Returns aggregate statistics for all tracked fair-launch coins
+ * @summary Get summary stats
+ */
+export const GetFairLaunchStatsResponse = zod.object({
+  totalMarketCap: zod.number(),
+  totalCoins: zod.number(),
+  topCoin: zod.string(),
+  cryptonRank: zod
+    .number()
+    .nullish()
+    .describe("Current rank of Crypton (CRP) in the fair-launch list"),
+  lastUpdated: zod.string(),
+});
