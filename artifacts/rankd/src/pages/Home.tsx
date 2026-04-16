@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useGetFairLaunchCoins, useGetFairLaunchStats, getGetFairLaunchCoinsQueryKey, getGetFairLaunchStatsQueryKey } from "@workspace/api-client-react";
 import { formatMoney, formatPrice, formatNumber, formatPercent } from "@/lib/format";
 import { Search, RefreshCw, TrendingUp, TrendingDown, Shield, Info, Award } from "lucide-react";
@@ -14,9 +14,34 @@ interface WhyFairTooltipProps {
 
 function WhyFairTooltip({ text, coinName }: WhyFairTooltipProps) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function updatePos() {
+      if (!btnRef.current) return;
+      const rect = btnRef.current.getBoundingClientRect();
+      const tooltipWidth = 288;
+      const spaceRight = window.innerWidth - rect.right;
+      const left = spaceRight >= tooltipWidth + 8
+        ? rect.right + 8
+        : rect.left - tooltipWidth - 8;
+      setPos({ top: rect.top, left });
+    }
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open]);
+
   return (
     <div className="relative inline-block">
       <button
+        ref={btnRef}
         data-testid={`tooltip-trigger-${coinName}`}
         onClick={() => setOpen((v) => !v)}
         className="p-1 rounded text-muted-foreground hover:text-primary transition-colors"
@@ -27,13 +52,14 @@ function WhyFairTooltip({ text, coinName }: WhyFairTooltipProps) {
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              initial={{ opacity: 0, y: -4, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-6 top-0 z-20 w-72 bg-card border border-border rounded-lg p-4 shadow-xl text-sm"
+              style={{ position: "fixed", top: pos.top, left: pos.left, width: 288 }}
+              className="z-50 bg-card border border-border rounded-lg p-4 shadow-xl text-sm"
             >
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="w-4 h-4 text-primary flex-shrink-0" />
