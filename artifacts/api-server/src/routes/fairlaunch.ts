@@ -109,6 +109,26 @@ async function fetchFluxNodeCount(): Promise<number | null> {
   }
 }
 
+async function fetchMoneroNodeCount(): Promise<number | null> {
+  const cached = liveNodeCache.get("monero");
+  if (cached && Date.now() - cached.fetchedAt.getTime() < LIVE_NODE_TTL_MS) return cached.count;
+  try {
+    const resp = await fetch("https://monero.fail/nodes.json", {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { monero: { clear: string[]; i2p: string[]; onion: string[] } };
+    const xmr = data?.monero;
+    if (!xmr) return null;
+    const count = (xmr.clear?.length ?? 0) + (xmr.i2p?.length ?? 0) + (xmr.onion?.length ?? 0);
+    if (!count) return null;
+    liveNodeCache.set("monero", { count, fetchedAt: new Date() });
+    return count;
+  } catch {
+    return null;
+  }
+}
+
 interface NormalizedMarketData {
   id: string;
   price: number | null;
@@ -415,7 +435,7 @@ router.get(
     });
 
     const nullGitHubEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date(0) };
-    const [githubResults, bitcoinNodes, fluxNodes] = await Promise.all([
+    const [githubResults, bitcoinNodes, fluxNodes, moneroNodes] = await Promise.all([
       Promise.all(
         allWithData.map(({ meta }) =>
           meta.github && !meta.softwareVersion
@@ -425,11 +445,13 @@ router.get(
       ),
       fetchBitcoinNodeCount(),
       fetchFluxNodeCount(),
+      fetchMoneroNodeCount(),
     ]);
 
     const liveNodeCounts = new Map<string, number | null>([
       ["bitcoin", bitcoinNodes],
       ["zelcash", fluxNodes],
+      ["monero", moneroNodes],
     ]);
 
     const crpOverrides = getCRPOverrides();
