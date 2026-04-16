@@ -64,6 +64,49 @@ interface GitHubReleaseCache {
 const GITHUB_CACHE_TTL_MS = 6 * 60 * 60_000;
 const githubReleaseCache = new Map<string, GitHubReleaseCache>();
 
+interface LiveNodeEntry {
+  count: number;
+  fetchedAt: Date;
+}
+const liveNodeCache = new Map<string, LiveNodeEntry>();
+const LIVE_NODE_TTL_MS = 30 * 60_000;
+
+async function fetchBitcoinNodeCount(): Promise<number | null> {
+  const cached = liveNodeCache.get("bitcoin");
+  if (cached && Date.now() - cached.fetchedAt.getTime() < LIVE_NODE_TTL_MS) return cached.count;
+  try {
+    const resp = await fetch("https://bitnodes.io/api/v1/snapshots/latest/", {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { total_nodes: number };
+    const count = data?.total_nodes;
+    if (!count) return null;
+    liveNodeCache.set("bitcoin", { count, fetchedAt: new Date() });
+    return count;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFluxNodeCount(): Promise<number | null> {
+  const cached = liveNodeCache.get("zelcash");
+  if (cached && Date.now() - cached.fetchedAt.getTime() < LIVE_NODE_TTL_MS) return cached.count;
+  try {
+    const resp = await fetch("https://api.runonflux.io/daemon/getzelnodecount", {
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { status: string; data: { total: number } };
+    const count = data?.data?.total;
+    if (!count) return null;
+    liveNodeCache.set("zelcash", { count, fetchedAt: new Date() });
+    return count;
+  } catch {
+    return null;
+  }
+}
+
 interface NormalizedMarketData {
   id: string;
   price: number | null;
@@ -244,6 +287,7 @@ function buildCoinResponse(
   live: NormalizedMarketData,
   githubRelease: GitHubReleaseCache,
   versionOverride?: { softwareVersion: string | null; lastReleasedAt: string | null },
+  liveNodeCount?: number | null,
 ) {
   const softwareVersion = versionOverride?.softwareVersion ?? meta.softwareVersion ?? githubRelease.softwareVersion ?? null;
   const lastReleasedAt = versionOverride?.lastReleasedAt ?? meta.lastReleasedAt ?? githubRelease.lastReleasedAt ?? null;
@@ -269,7 +313,7 @@ function buildCoinResponse(
     yieldType: meta.yieldType ?? null,
     softwareVersion,
     lastReleasedAt,
-    activeNodes: meta.activeNodes ?? live.activeNodes ?? null,
+    activeNodes: liveNodeCount ?? meta.activeNodes ?? live.activeNodes ?? null,
   };
 }
 
@@ -322,13 +366,22 @@ router.get(
     });
 
     const nullGitHubEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date(0) };
-    const githubResults = await Promise.all(
-      allWithData.map(({ meta }) =>
-        meta.github && !meta.softwareVersion
-          ? fetchGitHubRelease(meta.github)
-          : Promise.resolve(nullGitHubEntry),
+    const [githubResults, bitcoinNodes, fluxNodes] = await Promise.all([
+      Promise.all(
+        allWithData.map(({ meta }) =>
+          meta.github && !meta.softwareVersion
+            ? fetchGitHubRelease(meta.github)
+            : Promise.resolve(nullGitHubEntry),
+        ),
       ),
-    );
+      fetchBitcoinNodeCount(),
+      fetchFluxNodeCount(),
+    ]);
+
+    const liveNodeCounts = new Map<string, number | null>([
+      ["bitcoin", bitcoinNodes],
+      ["zelcash", fluxNodes],
+    ]);
 
     const crpOverrides = getCRPOverrides();
     const globallyRanked = allWithData.map(({ meta, live }, idx) =>
@@ -338,6 +391,7 @@ router.get(
         live,
         githubResults[idx],
         meta.id === "crp-crypton" ? crpOverrides : undefined,
+        liveNodeCounts.get(meta.id),
       ),
     );
 

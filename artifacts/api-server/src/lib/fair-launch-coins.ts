@@ -34,6 +34,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched by Satoshi Nakamoto with no pre-mine. First blocks mined publicly from genesis. Zero team allocation or insider wallets.",
     isFeatured: false,
+    activeNodes: 17500,
   },
   {
     id: "litecoin",
@@ -48,6 +49,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Announced publicly on Bitcointalk before launch. No pre-mine, Scrypt PoW, CPU-mineable at launch so anyone could participate from day one.",
     isFeatured: false,
+    activeNodes: 1700,
   },
   {
     id: "monero",
@@ -62,6 +64,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched as Bytecoin fork with no pre-mine. No dev tax, no insider allocations. Community-driven from day one, RandomX algorithm designed for CPU mining fairness.",
     isFeatured: false,
+    activeNodes: 1900,
   },
   {
     id: "dogecoin",
@@ -76,6 +79,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Fair launch announced on Reddit. No pre-mine, open from day 1, Scrypt PoW. Originally a joke coin but never had insider allocations.",
     isFeatured: false,
+    activeNodes: 1500,
   },
   {
     id: "kaspa",
@@ -90,6 +94,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched with no pre-mine, no ICO, no VC funding. Uses GHOSTDAG protocol, mineable from day one. Community-vetted as one of the cleanest modern fair launches.",
     isFeatured: false,
+    activeNodes: 900,
   },
   {
     id: "ravencoin",
@@ -104,6 +109,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched on January 3, 2018 (Bitcoin's birthday) with no ICO, no pre-mine, no founder reward. X16R algorithm for GPU mining fairness.",
     isFeatured: false,
+    activeNodes: 500,
   },
   {
     id: "zcash",
@@ -118,6 +124,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Fair launch with publicly mined genesis block. Founders reward was transparent and time-limited (ended). Privacy-first PoW coin with no hidden supply.",
     isFeatured: false,
+    activeNodes: 900,
   },
   {
     id: "zencash",
@@ -134,6 +141,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     isFeatured: false,
     stakingApy: 3.5,
     yieldType: "Secure Node",
+    activeNodes: 3600,
   },
   {
     id: "nano",
@@ -148,6 +156,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine and no ICO. All supply was distributed freely via a public captcha faucet over four years, ensuring broad community ownership from day one.",
     isFeatured: false,
+    activeNodes: 185,
   },
   {
     id: "verge",
@@ -162,6 +171,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Launched as DogeCoin Dark in 2014 with no pre-mine. Five PoW algorithms for mining decentralization. Fully community-driven with no team wallet or insider allocation.",
     isFeatured: false,
+    activeNodes: 280,
   },
   {
     id: "pirate-chain",
@@ -176,6 +186,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine, no ICO, no dev fund. Launched as a privacy-first Equihash chain requiring shielded transactions by default. Entirely community-mined from genesis.",
     isFeatured: false,
+    activeNodes: 400,
   },
   {
     id: "grin",
@@ -190,6 +201,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine, no ICO, no dev allocation. MimbleWimble protocol implementation launched anonymously. Purely community-funded and mined from genesis.",
     isFeatured: false,
+    activeNodes: 75,
   },
   {
     id: "vertcoin",
@@ -204,6 +216,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine, Lyra2RE ASIC-resistant algorithm specifically designed to keep mining decentralized and accessible to regular GPU miners.",
     isFeatured: false,
+    activeNodes: 250,
   },
   {
     id: "zelcash",
@@ -220,6 +233,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     isFeatured: false,
     stakingApy: 25,
     yieldType: "Node Operator",
+    activeNodes: 13000,
   },
   {
     id: "ergo",
@@ -234,6 +248,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No ICO, no pre-mine, no VC allocation. Autolykos PoW algorithm, ASIC-resistant and designed for GPU miners. Smart contract platform launched fair.",
     isFeatured: false,
+    activeNodes: 850,
   },
   {
     id: "beam",
@@ -248,6 +263,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "MimbleWimble privacy coin with transparent treasury (capped at 20% of block rewards for 5 years). Publicly announced before launch, no hidden pre-mine.",
     isFeatured: false,
+    activeNodes: 350,
   },
   {
     id: "digibyte",
@@ -262,6 +278,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine, no ICO. Five merged-mining algorithms for maximum decentralization. Among the longest-running fair-launch PoW chains.",
     isFeatured: false,
+    activeNodes: 700,
   },
   {
     id: "feathercoin",
@@ -276,6 +293,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Litecoin-based fork with no pre-mine. NeoScrypt algorithm, publicly announced launch. One of the earliest altcoins with a genuinely clean launch.",
     isFeatured: false,
+    activeNodes: 45,
   },
   {
     id: "groestlcoin",
@@ -290,6 +308,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine, no ICO. Groestl algorithm from day 1, announced on Bitcointalk. Privacy-optional SegWit-adopting chain with a clean fair-launch history.",
     isFeatured: false,
+    activeNodes: 800,
   },
   {
     id: "namecoin",
@@ -304,6 +323,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "First Bitcoin fork, no pre-mine. Launched as decentralized DNS replacement. One of the original Bitcoin-era fair-launch experiments still running.",
     isFeatured: false,
+    activeNodes: 130,
   },
   {
     id: "peercoin",
@@ -320,6 +340,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     isFeatured: false,
     stakingApy: 1,
     yieldType: "PoS Minting",
+    activeNodes: 400,
   },
   {
     id: "zcoin",
@@ -334,6 +355,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "Originally Zcoin, launched with no pre-mine and transparent founder reward structure (limited to 6% for development, publicly disclosed). Privacy-focused PoW.",
     isFeatured: false,
+    activeNodes: 1200,
   },
   {
     id: "syscoin",
@@ -348,6 +370,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No pre-mine ICO-free launch. SHA-256 merge-mined with Bitcoin. Community-developed asset platform built on a fair foundation from genesis.",
     isFeatured: false,
+    activeNodes: 500,
   },
   {
     id: "handshake",
@@ -362,6 +385,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     whyFair:
       "No ICO, no pre-mine for insiders. 70% of total supply airdropped to open-source developers and the FOSS community. Remaining 30% mined via PoW from genesis.",
     isFeatured: false,
+    activeNodes: 250,
   },
   {
     id: "signum",
@@ -378,6 +402,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
     isFeatured: false,
     stakingApy: 5,
     yieldType: "Forging",
+    activeNodes: 350,
   },
   {
     id: "crp-crypton",
