@@ -12,7 +12,7 @@ import { formatMoney, formatPrice, formatNumber, formatPercent } from "@/lib/for
 import {
   Search, RefreshCw, TrendingUp, TrendingDown, Shield, Info,
   Award, Globe, ExternalLink, Github, ChevronDown, ChevronUp,
-  Cpu, Activity, Percent,
+  Cpu, Activity, Percent, Tag, Radio,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -383,6 +383,40 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
             </div>
           )}
         </div>
+
+        {/* Network Health */}
+        {(coin.softwareVersion || coin.lastReleasedAt || coin.activeNodes != null) && (
+          <div className="flex flex-col gap-2">
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Network Health</div>
+            <div className="grid grid-cols-2 gap-2">
+              {coin.softwareVersion && (
+                <div className="bg-background rounded-lg border border-border p-3 flex flex-col gap-1">
+                  <div className="flex items-center gap-1 text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                    <Tag className="w-3 h-3" /> Version
+                  </div>
+                  <div className="text-sm font-mono font-semibold text-foreground truncate">{coin.softwareVersion}</div>
+                </div>
+              )}
+              {coin.lastReleasedAt && (
+                <div className="bg-background rounded-lg border border-border p-3 flex flex-col gap-1">
+                  <div className="flex items-center gap-1 text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                    <Activity className="w-3 h-3" /> Last Release
+                  </div>
+                  <div className="text-sm font-mono font-semibold text-foreground">{formatRelativeTime(coin.lastReleasedAt)}</div>
+                </div>
+              )}
+              {coin.activeNodes != null && (
+                <div className={`${coin.softwareVersion || coin.lastReleasedAt ? "col-span-2" : ""} bg-emerald-950/20 rounded-lg border border-emerald-500/30 p-3 flex flex-col gap-1`}>
+                  <div className="flex items-center gap-1 text-xs font-mono text-emerald-400 uppercase tracking-wider">
+                    <Radio className="w-3 h-3" /> Active Nodes
+                  </div>
+                  <div className="text-lg font-mono font-bold text-emerald-400">{coin.activeNodes.toLocaleString()}</div>
+                  <div className="text-xs text-emerald-600">nodes online · proof of life</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
