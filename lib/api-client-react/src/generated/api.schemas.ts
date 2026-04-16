@@ -19,7 +19,7 @@ export interface FairLaunchCoin {
   price?: number | null;
   marketCap?: number | null;
   circulatingSupply?: number | null;
-  change24h?: number | null;
+  change30d?: number | null;
   launchYear: number;
   /** e.g. PoW, PoS */
   consensusType: string;

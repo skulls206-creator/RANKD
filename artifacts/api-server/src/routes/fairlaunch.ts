@@ -22,7 +22,7 @@ interface CoinGeckoMarketData {
   current_price: number | null;
   market_cap: number | null;
   circulating_supply: number | null;
-  price_change_percentage_24h: number | null;
+  price_change_percentage_30d_in_currency: number | null;
 }
 
 interface CoinPaprikaMarketData {
@@ -35,7 +35,7 @@ interface CoinPaprikaMarketData {
     USD: {
       price: number | null;
       market_cap: number | null;
-      percent_change_24h: number | null;
+      percent_change_30d?: number | null;
     };
   };
 }
@@ -68,7 +68,7 @@ interface NormalizedMarketData {
   price: number | null;
   marketCap: number | null;
   circulatingSupply: number | null;
-  change24h: number | null;
+  change30d: number | null;
   imageUrl: string | null;
   activeNodes?: number | null;
 }
@@ -91,7 +91,7 @@ const chartCache = new Map<string, ChartCacheEntry>();
 const CHART_CACHE_TTL_MS = 10 * 60_000;
 
 async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(COINGECKO_IDS)}&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h`;
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(COINGECKO_IDS)}&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=30d`;
   const response = await fetch(url, { headers: { Accept: "application/json" } });
   if (!response.ok) {
     throw new Error(`CoinGecko API error: ${response.status}`);
@@ -183,7 +183,7 @@ async function fetchCoinPaprikaData(
       price,
       marketCap,
       circulatingSupply,
-      change24h: data.quotes?.USD?.percent_change_24h ?? null,
+      change30d: data.quotes?.USD?.percent_change_30d ?? null,
       imageUrl: meta.logoUrl ?? `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
       activeNodes: utopiaData?.activeNodes ?? null,
     };
@@ -232,7 +232,7 @@ function normalizeCoingecko(d: CoinGeckoMarketData | undefined, meta: FairLaunch
     price: d?.current_price ?? null,
     marketCap: d?.market_cap ?? null,
     circulatingSupply: d?.circulating_supply ?? null,
-    change24h: d?.price_change_percentage_24h ?? null,
+    change30d: d?.price_change_percentage_30d_in_currency ?? null,
     imageUrl: d?.image ?? null,
   };
 }
@@ -253,7 +253,7 @@ function buildCoinResponse(
     price: live.price,
     marketCap: live.marketCap,
     circulatingSupply: live.circulatingSupply,
-    change24h: live.change24h,
+    change30d: live.change30d,
     launchYear: meta.launchYear,
     consensusType: meta.consensusType,
     algorithm: meta.algorithm,
@@ -304,7 +304,7 @@ router.get(
       if (meta.coinPaprikaId) {
         live = cacheEntry.coinpaprika.get(meta.id) ?? {
           id: meta.id, price: null, marketCap: null,
-          circulatingSupply: null, change24h: null, imageUrl: null,
+          circulatingSupply: null, change30d: null, imageUrl: null,
         };
       } else {
         live = normalizeCoingecko(cgMap.get(meta.id), meta);
@@ -420,7 +420,7 @@ router.get(
       if (meta.coinPaprikaId) {
         live = cacheEntry.coinpaprika.get(meta.id) ?? {
           id: meta.id, price: null, marketCap: null,
-          circulatingSupply: null, change24h: null, imageUrl: null,
+          circulatingSupply: null, change30d: null, imageUrl: null,
         };
       } else {
         live = normalizeCoingecko(cgMap.get(meta.id), meta);

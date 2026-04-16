@@ -19,7 +19,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change24h" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
+type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change30d" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
 type SortDir = "asc" | "desc";
 
 interface WhyFairTooltipProps {
@@ -185,8 +185,8 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
     query: { queryKey: getGetCoinChartQueryKey(coin.id), staleTime: 10 * 60_000 },
   });
 
-  const isPositive = coin.change24h != null && coin.change24h > 0;
-  const isNegative = coin.change24h != null && coin.change24h < 0;
+  const isPositive = coin.change30d != null && coin.change30d > 0;
+  const isNegative = coin.change30d != null && coin.change30d < 0;
 
   const chartPoints = chartData?.prices?.map(([ts, price]) => ({ ts, price })) ?? [];
 
@@ -307,11 +307,11 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
             <div className="text-lg font-mono font-bold text-foreground">{formatPrice(coin.price)}</div>
           </div>
           <div className="bg-background rounded-lg border border-border p-3">
-            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">24h Change</div>
+            <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">30D Change</div>
             <div className={`text-lg font-mono font-bold flex items-center gap-1 ${isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-muted-foreground"}`}>
               {isPositive && <TrendingUp className="w-4 h-4" />}
               {isNegative && <TrendingDown className="w-4 h-4" />}
-              {formatPercent(coin.change24h)}
+              {formatPercent(coin.change30d)}
             </div>
           </div>
           <div className="bg-background rounded-lg border border-border p-3">
@@ -439,7 +439,7 @@ export default function Home() {
       case "price": aVal = a.price ?? -Infinity; bVal = b.price ?? -Infinity; break;
       case "marketCap": aVal = a.marketCap ?? -Infinity; bVal = b.marketCap ?? -Infinity; break;
       case "circulatingSupply": aVal = a.circulatingSupply ?? -Infinity; bVal = b.circulatingSupply ?? -Infinity; break;
-      case "change24h": aVal = a.change24h ?? -Infinity; bVal = b.change24h ?? -Infinity; break;
+      case "change30d": aVal = a.change30d ?? -Infinity; bVal = b.change30d ?? -Infinity; break;
       case "launchYear": aVal = a.launchYear; bVal = b.launchYear; break;
       case "stakingApy": aVal = a.stakingApy ?? -Infinity; bVal = b.stakingApy ?? -Infinity; break;
       case "lastReleasedAt": {
@@ -604,7 +604,7 @@ export default function Home() {
                     <SortButton field="circulatingSupply" label="Circ. Supply" />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortButton field="change24h" label="24h %" />
+                    <SortButton field="change30d" label="30D %" />
                   </th>
                   <th className="px-4 py-3 text-center">
                     <SortButton field="launchYear" label="Year" />
@@ -655,8 +655,8 @@ export default function Home() {
                 ) : (
                   <>
                     {sorted.map((coin, idx) => {
-                      const isPositive = coin.change24h != null && coin.change24h > 0;
-                      const isNegative = coin.change24h != null && coin.change24h < 0;
+                      const isPositive = coin.change30d != null && coin.change30d > 0;
+                      const isNegative = coin.change30d != null && coin.change30d < 0;
                       const isExpanded = expandedCoinId === coin.id;
 
                       return (
@@ -747,7 +747,7 @@ export default function Home() {
                               >
                                 {isPositive && <TrendingUp className="w-3 h-3" />}
                                 {isNegative && <TrendingDown className="w-3 h-3" />}
-                                {formatPercent(coin.change24h)}
+                                {formatPercent(coin.change30d)}
                               </span>
                             </td>
 

@@ -36,7 +36,7 @@ export const GetFairLaunchCoinsResponse = zod.object({
       price: zod.number().nullish(),
       marketCap: zod.number().nullish(),
       circulatingSupply: zod.number().nullish(),
-      change24h: zod.number().nullish(),
+      change30d: zod.number().nullish(),
       launchYear: zod.number(),
       consensusType: zod.string().describe("e.g. PoW, PoS"),
       algorithm: zod.string().describe("Mining or consensus algorithm name"),

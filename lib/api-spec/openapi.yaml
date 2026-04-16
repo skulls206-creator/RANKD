@@ -127,7 +127,7 @@ components:
         circulatingSupply:
           type: number
           nullable: true
-        change24h:
+        change30d:
           type: number
           nullable: true
         launchYear:
