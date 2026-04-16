@@ -369,14 +369,22 @@ export default function Home() {
                                   alt={coin.name}
                                   className="w-7 h-7 rounded-full flex-shrink-0"
                                   loading="lazy"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    target.style.display = "none";
+                                    const fallback = target.nextElementSibling as HTMLElement | null;
+                                    if (fallback) fallback.style.display = "flex";
+                                  }}
                                 />
-                              ) : (
-                                <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                  <span className="text-xs font-bold text-muted-foreground">
-                                    {coin.symbol.slice(0, 2)}
-                                  </span>
-                                </div>
-                              )}
+                              ) : null}
+                              <div
+                                className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+                                style={{ display: coin.imageUrl ? "none" : "flex" }}
+                              >
+                                <span className="text-xs font-bold text-muted-foreground">
+                                  {coin.symbol.slice(0, 2)}
+                                </span>
+                              </div>
                               <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-foreground truncate text-sm">

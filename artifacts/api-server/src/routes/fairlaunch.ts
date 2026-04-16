@@ -116,7 +116,7 @@ async function fetchCoinPaprikaData(
       marketCap,
       circulatingSupply,
       change24h: data.quotes?.USD?.percent_change_24h ?? null,
-      imageUrl: `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
+      imageUrl: meta.logoUrl ?? `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
     };
   } catch {
     return null;
