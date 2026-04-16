@@ -22,6 +22,53 @@ import {
 type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change30d" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
 type SortDir = "asc" | "desc";
 
+function useDragScroll() {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = useRef({ down: false, startX: 0, scrollLeft: 0 });
+  const draggedRef = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    function onDown(e: MouseEvent) {
+      pos.current = { down: true, startX: e.clientX, scrollLeft: el!.scrollLeft };
+      el!.style.cursor = "grabbing";
+      el!.style.userSelect = "none";
+    }
+    function onMove(e: MouseEvent) {
+      if (!pos.current.down) return;
+      const dx = e.clientX - pos.current.startX;
+      if (Math.abs(dx) > 4) draggedRef.current = true;
+      el!.scrollLeft = pos.current.scrollLeft - dx;
+    }
+    function onUp() {
+      pos.current.down = false;
+      el!.style.cursor = "";
+      el!.style.userSelect = "";
+    }
+
+    el.addEventListener("mousedown", onDown);
+    el.addEventListener("mousemove", onMove);
+    el.addEventListener("mouseup", onUp);
+    el.addEventListener("mouseleave", onUp);
+    return () => {
+      el.removeEventListener("mousedown", onDown);
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseup", onUp);
+      el.removeEventListener("mouseleave", onUp);
+    };
+  }, []);
+
+  const wasDrag = useCallback(() => {
+    const v = draggedRef.current;
+    draggedRef.current = false;
+    return v;
+  }, []);
+
+  return { ref, wasDrag };
+}
+
 interface WhyFairTooltipProps {
   text: string;
   coinName: string;
@@ -376,6 +423,7 @@ export default function Home() {
   const [sortField, setSortField] = useState<SortField>("rank");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [expandedCoinId, setExpandedCoinId] = useState<string | null>(null);
+  const tableScroll = useDragScroll();
 
   const debounceTimeout = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -584,7 +632,7 @@ export default function Home() {
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
-          <div className="overflow-x-auto">
+          <div ref={tableScroll.ref} className="overflow-x-auto cursor-grab active:cursor-grabbing">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-card">
@@ -666,7 +714,7 @@ export default function Home() {
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: idx * 0.02 }}
-                            onClick={() => handleRowClick(coin.id)}
+                            onClick={() => { if (!tableScroll.wasDrag()) handleRowClick(coin.id); }}
                             className={`border-b border-border transition-colors cursor-pointer group ${
                               isExpanded
                                 ? "bg-card border-b-0"
