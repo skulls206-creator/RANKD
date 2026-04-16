@@ -11,6 +11,7 @@ import {
   COINPAPRIKA_COINS,
   type FairLaunchCoinMeta,
 } from "../lib/fair-launch-coins";
+import { getCRPOverrides } from "../lib/crp-config";
 
 const router: IRouter = Router();
 
@@ -242,9 +243,10 @@ function buildCoinResponse(
   rank: number,
   live: NormalizedMarketData,
   githubRelease: GitHubReleaseCache,
+  versionOverride?: { softwareVersion: string | null; lastReleasedAt: string | null },
 ) {
-  const softwareVersion = meta.softwareVersion ?? githubRelease.softwareVersion ?? null;
-  const lastReleasedAt = meta.lastReleasedAt ?? githubRelease.lastReleasedAt ?? null;
+  const softwareVersion = versionOverride?.softwareVersion ?? meta.softwareVersion ?? githubRelease.softwareVersion ?? null;
+  const lastReleasedAt = versionOverride?.lastReleasedAt ?? meta.lastReleasedAt ?? githubRelease.lastReleasedAt ?? null;
   return {
     rank,
     id: meta.id,
@@ -328,8 +330,15 @@ router.get(
       ),
     );
 
+    const crpOverrides = getCRPOverrides();
     const globallyRanked = allWithData.map(({ meta, live }, idx) =>
-      buildCoinResponse(meta, idx + 1, live, githubResults[idx]),
+      buildCoinResponse(
+        meta,
+        idx + 1,
+        live,
+        githubResults[idx],
+        meta.id === "crp-crypton" ? crpOverrides : undefined,
+      ),
     );
 
     let ranked = globallyRanked;
