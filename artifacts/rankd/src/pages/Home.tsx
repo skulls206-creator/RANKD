@@ -374,6 +374,22 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
 
   const chartColor = isNegative ? "#f87171" : "#10b981";
 
+  const [yAxisWidth, setYAxisWidth] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? 45 : 55
+  );
+  useEffect(() => {
+    function update() { setYAxisWidth(window.innerWidth < 768 ? 45 : 55); }
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  const chartTicks = chartPoints.length > 1
+    ? [0, 1, 2, 3, 4]
+        .map((i) => Math.round(i * (chartPoints.length - 1) / 4))
+        .filter((v, i, arr) => arr.indexOf(v) === i)
+        .map((i) => chartPoints[i].ts)
+    : chartPoints.map((p) => p.ts);
+
   const links = [
     coin.website && { href: coin.website, icon: Globe, label: "Website" },
     coin.explorer && { href: coin.explorer, icon: Activity, label: "Explorer" },
@@ -423,11 +439,11 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
                 </defs>
                 <XAxis
                   dataKey="ts"
+                  ticks={chartTicks}
                   tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickLine={false}
                   axisLine={false}
-                  interval={Math.max(1, Math.floor(chartPoints.length / 5))}
                 />
                 <YAxis
                   domain={yDomain as [number, number]}
@@ -435,7 +451,7 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
                   tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickLine={false}
                   axisLine={false}
-                  width={55}
+                  width={yAxisWidth}
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1c2333", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
@@ -461,13 +477,13 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
 
       {/* Right: Identity + links */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <CoinLogo imageUrl={coin.imageUrl} name={coin.name} symbol={coin.symbol} size="lg" />
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-display font-bold text-foreground">{coin.name}</h2>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h2 className="text-xl font-display font-bold text-foreground truncate min-w-0">{coin.name}</h2>
               {coin.isFeatured && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30 flex-shrink-0">
                   <Award className="w-3 h-3" /> Featured
                 </span>
               )}
