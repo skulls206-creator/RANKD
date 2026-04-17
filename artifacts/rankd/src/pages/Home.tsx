@@ -159,7 +159,7 @@ function SkeletonRow({ index }: { index: number }) {
       transition={{ delay: index * 0.03 }}
       className="border-b border-border"
     >
-      {[48, 160, 120, 130, 130, 100, 80, 80, 90, 80, 90, 70, 40].map((w, i) => (
+      {[48, 160, 120, 130, 130, 100, 60, 80, 80, 90, 80, 90, 70, 40].map((w, i) => (
         <td key={i} className="px-4 py-4">
           <div
             className="h-4 rounded bg-muted animate-pulse"
@@ -1029,6 +1029,9 @@ export default function Home() {
                     <SortButton field="change30d" label="30D %" />
                   </th>
                   <th className="px-4 py-3 text-center">
+                    <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">7D Chart</span>
+                  </th>
+                  <th className="px-4 py-3 text-center">
                     <SortButton field="launchYear" label="Year" />
                   </th>
                   <th className="px-4 py-3 text-center">
@@ -1054,7 +1057,7 @@ export default function Home() {
                   Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} index={i} />)
                 ) : coinsError && !coins.length ? (
                   <tr>
-                    <td colSpan={13} className="px-4 py-16 text-center">
+                    <td colSpan={14} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Info className="w-8 h-8 text-muted-foreground" />
                         <p className="text-muted-foreground">Failed to load market data.</p>
@@ -1070,7 +1073,7 @@ export default function Home() {
                   </tr>
                 ) : sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="px-4 py-16 text-center">
+                    <td colSpan={14} className="px-4 py-16 text-center">
                       <p className="text-muted-foreground">No coins found matching "{search}"</p>
                     </td>
                   </tr>
@@ -1173,6 +1176,13 @@ export default function Home() {
                               </span>
                             </td>
 
+                            {/* 7D Sparkline */}
+                            <td className="px-4 py-4 text-center">
+                              <div className="flex justify-center">
+                                <CoinSparkline coin={coin} />
+                              </div>
+                            </td>
+
                             {/* Launch Year */}
                             <td className="px-4 py-4 text-center">
                               <span className="font-mono text-xs text-muted-foreground">
@@ -1252,7 +1262,7 @@ export default function Home() {
                                 className={`border-b border-border ${coin.isFeatured ? "border-l-2 border-l-primary" : ""}`}
                               >
                                 <td
-                                  colSpan={13}
+                                  colSpan={14}
                                   className={`p-0 ${coin.isFeatured ? "bg-amber-950/10" : "bg-card/40"}`}
                                 >
                                   <motion.div
