@@ -482,6 +482,8 @@ export default function Home() {
       queryKey: getGetFairLaunchCoinsQueryKey(coinsParams),
       refetchInterval: 60_000,
       staleTime: 30_000,
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
     },
   });
 
@@ -490,6 +492,8 @@ export default function Home() {
       queryKey: getGetFairLaunchStatsQueryKey(),
       refetchInterval: 60_000,
       staleTime: 30_000,
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
     },
   });
 
@@ -710,9 +714,9 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {coinsLoading ? (
+                {coinsLoading && !coins.length ? (
                   Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} index={i} />)
-                ) : coinsError ? (
+                ) : coinsError && !coins.length ? (
                   <tr>
                     <td colSpan={13} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
