@@ -21,20 +21,29 @@ const refreshLogger = {
   error: (msg: string) => logger.error(msg),
 };
 
-// Bind the port FIRST so the server is reachable within milliseconds of startup.
-// The GitHub cache refresh takes ~50s on first run — if we awaited it before
-// listen() the old process would still own port 8080 when we finally try to bind,
-// causing EADDRINUSE on every rapid restart (e.g. back-to-back task merges).
-const server = app.listen(port, () => {
-  logger.info({ port }, "Server listening");
+// Bind the port first so the server is reachable within milliseconds of startup.
+// The GitHub cache refresh (~50s) runs in the background after we are listening.
+// On restart the start script kills any lingering process on this port, but if
+// it is still occupied we retry up to 5 times with exponential back-off before
+// giving up.
+function listenWithRetry(attemptsLeft: number, delayMs: number): void {
+  const server = app.listen(port, () => {
+    logger.info({ port }, "Server listening");
+    void startGitHubCacheRefresh(refreshLogger);
+  });
 
-  // Start the GitHub release cache refresh in the background AFTER we are
-  // already bound and serving. The coins endpoint works fine with empty GitHub
-  // cache — it just won't show version/release data for the first ~50s.
-  void startGitHubCacheRefresh(refreshLogger);
-});
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE" && attemptsLeft > 1) {
+      logger.warn(
+        { port, attemptsLeft: attemptsLeft - 1 },
+        "Port in use, retrying after delay…",
+      );
+      setTimeout(() => listenWithRetry(attemptsLeft - 1, delayMs * 2), delayMs);
+    } else {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+  });
+}
 
-server.on("error", (err: NodeJS.ErrnoException) => {
-  logger.error({ err }, "Error listening on port");
-  process.exit(1);
-});
+listenWithRetry(5, 300);
