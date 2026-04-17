@@ -171,6 +171,134 @@ function SkeletonRow({ index }: { index: number }) {
   );
 }
 
+function SkeletonCard({ index }: { index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 0.03 }}
+      className="px-4 py-3.5 border-b border-border flex items-center gap-3"
+    >
+      <div className="w-5 h-3.5 rounded bg-muted animate-pulse flex-shrink-0" />
+      <div className="w-8 h-8 rounded-full bg-muted animate-pulse flex-shrink-0" />
+      <div className="flex-1 space-y-2 min-w-0">
+        <div className="h-4 w-28 rounded bg-muted animate-pulse" />
+        <div className="h-3 w-10 rounded bg-muted animate-pulse" />
+      </div>
+      <div className="text-right space-y-2 flex-shrink-0">
+        <div className="h-4 w-20 rounded bg-muted animate-pulse ml-auto" />
+        <div className="h-3 w-12 rounded bg-muted animate-pulse ml-auto" />
+      </div>
+    </motion.div>
+  );
+}
+
+const MOBILE_SORT_OPTIONS: { field: SortField; label: string }[] = [
+  { field: "rank", label: "Rank" },
+  { field: "price", label: "Price" },
+  { field: "marketCap", label: "Mkt Cap" },
+  { field: "change30d", label: "30D %" },
+  { field: "activeNodes", label: "Nodes" },
+  { field: "stakingApy", label: "Yield" },
+  { field: "launchYear", label: "Year" },
+  { field: "lastReleasedAt", label: "Release" },
+];
+
+interface MobileSortControlProps {
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (f: SortField) => void;
+}
+
+function MobileSortControl({ sortField, sortDir, onSort }: MobileSortControlProps) {
+  return (
+    <div className="flex gap-2 overflow-x-auto py-3 px-4 border-b border-border scrollbar-none bg-card/60">
+      {MOBILE_SORT_OPTIONS.map(({ field, label }) => {
+        const active = sortField === field;
+        return (
+          <button
+            key={field}
+            onClick={() => onSort(field)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-colors border flex-shrink-0 ${
+              active
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border"
+            }`}
+          >
+            {label}
+            {active && <span className="opacity-80">{sortDir === "asc" ? "↑" : "↓"}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface CoinCardProps {
+  coin: FairLaunchCoin;
+  isExpanded: boolean;
+  onClick: () => void;
+}
+
+function CoinCard({ coin, isExpanded, onClick }: CoinCardProps) {
+  const isPositive = coin.change30d != null && coin.change30d > 0;
+  const isNegative = coin.change30d != null && coin.change30d < 0;
+
+  return (
+    <div
+      className={`border-b border-border transition-colors ${
+        coin.isFeatured ? "bg-amber-950/20 border-l-2 border-l-primary" : ""
+      } ${isExpanded ? "bg-card" : ""}`}
+    >
+      <button
+        onClick={onClick}
+        className="w-full text-left px-4 py-3.5 flex items-center gap-3 active:bg-card/80"
+      >
+        <span className="w-6 text-xs font-mono text-muted-foreground tabular-nums text-right flex-shrink-0">
+          {coin.rank}
+        </span>
+        <CoinLogo imageUrl={coin.imageUrl} name={coin.name} symbol={coin.symbol} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-semibold text-sm text-foreground truncate">{coin.name}</span>
+            {coin.isFeatured && <Award className="w-3 h-3 text-primary flex-shrink-0" />}
+          </div>
+          <span className="text-xs font-mono text-muted-foreground">{coin.symbol}</span>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <div className="font-mono text-sm font-semibold text-foreground tabular-nums">
+            {formatPrice(coin.price)}
+          </div>
+          <div
+            className={`text-xs font-mono tabular-nums ${
+              isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-muted-foreground"
+            }`}
+          >
+            {formatPercent(coin.change30d)}
+          </div>
+        </div>
+        <span className="ml-1 text-muted-foreground/50 flex-shrink-0">
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+            animate={{ height: "auto", opacity: 1, overflow: "visible" }}
+            exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className={`border-t border-border ${coin.isFeatured ? "bg-amber-950/10" : "bg-card/40"}`}
+          >
+            <CoinDetailPanel coin={coin} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 interface CoinLogo {
   imageUrl?: string | null;
   name: string;
@@ -253,7 +381,7 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
   ].filter(Boolean) as { href: string; icon: typeof Globe; label: string }[];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-6 p-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-4 lg:gap-6 p-4 lg:p-6">
       {/* Left: Fair launch story */}
       <div className="flex flex-col gap-3">
         <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Fair Launch Story</div>
@@ -274,7 +402,7 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
       {/* Center: Chart */}
       <div className="flex flex-col gap-2">
         <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">7-Day Price</div>
-        <div className="h-48 w-full">
+        <div className="h-52 lg:h-48 w-full">
           {chartLoading ? (
             <div className="h-full w-full rounded-lg bg-muted/30 animate-pulse flex items-center justify-center">
               <span className="text-xs text-muted-foreground">Loading chart...</span>
@@ -299,15 +427,15 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
                   tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickLine={false}
                   axisLine={false}
-                  interval="preserveStartEnd"
+                  interval={Math.max(1, Math.floor(chartPoints.length / 5))}
                 />
                 <YAxis
                   domain={yDomain as [number, number]}
-                  tickFormatter={(v) => v < 0.01 ? `$${v.toFixed(5)}` : v < 1 ? `$${v.toFixed(3)}` : `$${v.toLocaleString()}`}
+                  tickFormatter={(v) => v < 0.01 ? `$${v.toFixed(5)}` : v < 1 ? `$${v.toFixed(3)}` : `$${(v as number).toLocaleString()}`}
                   tick={{ fontSize: 10, fill: "#6b7280" }}
                   tickLine={false}
                   axisLine={false}
-                  width={60}
+                  width={55}
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1c2333", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
@@ -572,7 +700,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="border-b border-border sticky top-0 bg-background/90 backdrop-blur-sm z-30">
-        <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span
@@ -591,9 +719,10 @@ export default function Home() {
 
           <div className="flex items-center gap-3">
             {lastUpdated && (
-              <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                 <div className={`w-1.5 h-1.5 rounded-full ${isFetching ? "bg-yellow-400 animate-pulse" : "bg-green-500"}`} />
-                Updated {lastUpdated}
+                <span className="hidden sm:inline">Updated </span>
+                {lastUpdated}
               </div>
             )}
             <button
@@ -608,7 +737,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-[1400px] mx-auto px-3 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Hero text */}
         <div className="space-y-2">
           <h1 className="text-lg font-display font-semibold text-foreground">
@@ -664,12 +793,52 @@ export default function Home() {
             placeholder="Search coins..."
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            className="w-full max-w-sm bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
+            className="w-full md:max-w-sm bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
           />
         </div>
 
-        {/* Table */}
-        <div className="rounded-xl border border-border overflow-hidden">
+        {/* Mobile card list (< md) */}
+        <div className="md:hidden rounded-xl border border-border overflow-hidden">
+          <MobileSortControl sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+          {coinsLoading && !coins.length ? (
+            Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} index={i} />)
+          ) : coinsError && !coins.length ? (
+            <div className="px-4 py-16 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <Info className="w-8 h-8 text-muted-foreground" />
+                <p className="text-muted-foreground">Failed to load market data.</p>
+                <button
+                  onClick={() => refetchCoins()}
+                  className="text-primary hover:underline text-sm"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="px-4 py-16 text-center">
+              <p className="text-muted-foreground">No coins found matching &ldquo;{search}&rdquo;</p>
+            </div>
+          ) : (
+            sorted.map((coin, idx) => (
+              <motion.div
+                key={coin.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: idx * 0.02 }}
+              >
+                <CoinCard
+                  coin={coin}
+                  isExpanded={expandedCoinId === coin.id}
+                  onClick={() => handleRowClick(coin.id)}
+                />
+              </motion.div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table (≥ md) */}
+        <div className="hidden md:block rounded-xl border border-border overflow-hidden">
           <div ref={tableScroll.ref} className="overflow-x-auto cursor-grab active:cursor-grabbing">
             <table className="w-full text-sm">
               <thead>
