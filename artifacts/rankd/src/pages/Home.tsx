@@ -234,6 +234,97 @@ function MobileSortControl({ sortField, sortDir, onSort }: MobileSortControlProp
   );
 }
 
+function useInView(rootMargin = "0px") {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rootMargin]);
+  return { ref, inView };
+}
+
+interface CoinSparklineProps {
+  coin: FairLaunchCoin;
+}
+
+function CoinSparkline({ coin }: CoinSparklineProps) {
+  const isPositive = coin.change30d != null && coin.change30d > 0;
+  const { ref, inView } = useInView("100px");
+
+  const { data: chartData } = useGetCoinChart(coin.id, {
+    query: {
+      queryKey: getGetCoinChartQueryKey(coin.id),
+      staleTime: 10 * 60_000,
+      enabled: inView,
+    },
+  });
+
+  const prices = chartData?.prices ?? [];
+  const hasData = prices.length >= 2;
+
+  const W = 60;
+  const H = 30;
+
+  const points = (() => {
+    if (!hasData) return "";
+    const vals = prices.map(([, p]) => p);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const range = max - min || 1;
+    return vals
+      .map((v, i) => {
+        const x = (i / (vals.length - 1)) * W;
+        const y = H - ((v - min) / range) * (H - 4) - 2;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  })();
+
+  const isNegative = coin.change30d != null && coin.change30d < 0;
+  const color = isPositive ? "#10b981" : isNegative ? "#f87171" : "#6b7280";
+
+  if (inView && !hasData && chartData !== undefined) {
+    return null;
+  }
+
+  return (
+    <div ref={ref} className="flex-shrink-0">
+      {inView && hasData ? (
+        <svg
+          width={W}
+          height={H}
+          viewBox={`0 0 ${W} ${H}`}
+          className="overflow-visible"
+          aria-hidden
+        >
+          <polyline
+            points={points}
+            fill="none"
+            stroke={color}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <div style={{ width: W, height: H }} />
+      )}
+    </div>
+  );
+}
+
 interface CoinCardProps {
   coin: FairLaunchCoin;
   isExpanded: boolean;
@@ -265,6 +356,7 @@ function CoinCard({ coin, isExpanded, onClick }: CoinCardProps) {
           </div>
           <span className="text-xs font-mono text-muted-foreground">{coin.symbol}</span>
         </div>
+        <CoinSparkline coin={coin} />
         <div className="text-right flex-shrink-0">
           <div className="font-mono text-sm font-semibold text-foreground tabular-nums">
             {formatPrice(coin.price)}
