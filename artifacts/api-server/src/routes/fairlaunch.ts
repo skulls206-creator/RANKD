@@ -24,6 +24,7 @@ interface CoinGeckoMarketData {
   market_cap: number | null;
   circulating_supply: number | null;
   price_change_percentage_30d_in_currency: number | null;
+  sparkline_in_7d?: { price: number[] } | null;
 }
 
 interface CoinPaprikaMarketData {
@@ -154,10 +155,60 @@ let cache: CacheEntry | null = null;
 const CACHE_TTL_MS = 60_000;
 
 const chartCache = new Map<string, ChartCacheEntry>();
-const CHART_CACHE_TTL_MS = 10 * 60_000;
+const CHART_CACHE_TTL_MS = 30 * 60_000;
+
+async function fetchChartForCoin(id: string): Promise<number[][] | null> {
+  const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=7`;
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { prices: number[][] };
+    return data.prices ?? [];
+  } catch {
+    return null;
+  }
+}
+
+// Seed the chart cache from the sparkline_in_7d field returned by the markets
+// endpoint. This uses a single API call instead of one call per coin, keeping
+// us well within CoinGecko's free-tier rate limit.
+function seedChartCacheFromSparklines(
+  coingeckoData: CoinGeckoMarketData[],
+  logger: { info: (msg: string) => void },
+): void {
+  const now = Date.now();
+  let seeded = 0;
+  for (const d of coingeckoData) {
+    const prices = d.sparkline_in_7d?.price;
+    if (!prices || prices.length === 0) continue;
+    // Reconstruct hourly timestamps: sparkline covers the past `prices.length`
+    // hours ending at roughly now.
+    const intervalMs = 3600_000;
+    const pairs: number[][] = prices.map((p, i) => [
+      now - (prices.length - 1 - i) * intervalMs,
+      p,
+    ]);
+    const existing = chartCache.get(d.id);
+    if (existing && existing.prices.length > 0 && now - existing.fetchedAt.getTime() < CHART_CACHE_TTL_MS) {
+      continue;
+    }
+    chartCache.set(d.id, { prices: pairs, fetchedAt: new Date() });
+    seeded++;
+  }
+  if (seeded > 0) logger.info(`Chart cache: seeded ${seeded} coins from sparkline data`);
+}
+
+// Kept as a no-op export so index.ts import stays valid.
+// Sparklines are now seeded during the regular coins fetch via seedChartCacheFromSparklines.
+export function startChartCacheWarmup(_logger: {
+  info: (msg: string) => void;
+  error: (msg: string) => void;
+}): void {
+  // intentional no-op — chart data arrives via the bulk sparkline fetch
+}
 
 async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(COINGECKO_IDS)}&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=30d`;
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(COINGECKO_IDS)}&order=market_cap_desc&per_page=250&page=1&sparkline=true&price_change_percentage=30d`;
   const response = await fetch(url, { headers: { Accept: "application/json" } });
   if (!response.ok) {
     throw new Error(`CoinGecko API error: ${response.status}`);
@@ -310,6 +361,10 @@ async function refreshCache(): Promise<CacheEntry> {
     fetchCoinGeckoData(),
     ...COINPAPRIKA_COINS.map((meta) => fetchCoinPaprikaData(meta)),
   ]);
+
+  // Seed the chart cache from the bulk sparkline data included in the market
+  // fetch — zero extra API calls required.
+  seedChartCacheFromSparklines(coingeckoData, { info: (msg) => console.log(msg) });
 
   const coinpaprikaMap = new Map<string, NormalizedMarketData>();
   COINPAPRIKA_COINS.forEach((meta, idx) => {
@@ -507,26 +562,20 @@ router.get(
     }
 
     const cached = chartCache.get(id);
-    if (cached && Date.now() - cached.fetchedAt.getTime() < CHART_CACHE_TTL_MS) {
-      const result = GetCoinChartResponse.parse({ id, prices: cached.prices, hasData: cached.prices.length > 0 });
+    if (cached && cached.prices.length > 0 && Date.now() - cached.fetchedAt.getTime() < CHART_CACHE_TTL_MS) {
+      const result = GetCoinChartResponse.parse({ id, prices: cached.prices, hasData: true });
       res.json(result);
       return;
     }
 
-    try {
-      const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=7`;
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        const fallback = GetCoinChartResponse.parse({ id, prices: [], hasData: false });
-        res.json(fallback);
-        return;
-      }
-      const data = (await response.json()) as { prices: number[][] };
-      const prices = data.prices ?? [];
+    // Only cache results with actual data — never cache 429/error responses so
+    // the next request will retry CoinGecko rather than serving a stale failure.
+    const prices = await fetchChartForCoin(id);
+    if (prices && prices.length > 0) {
       chartCache.set(id, { prices, fetchedAt: new Date() });
-      const result = GetCoinChartResponse.parse({ id, prices, hasData: prices.length > 0 });
+      const result = GetCoinChartResponse.parse({ id, prices, hasData: true });
       res.json(result);
-    } catch {
+    } else {
       const fallback = GetCoinChartResponse.parse({ id, prices: [], hasData: false });
       res.json(fallback);
     }
