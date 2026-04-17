@@ -152,7 +152,7 @@ interface ChartCacheEntry {
 }
 
 let cache: CacheEntry | null = null;
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 5 * 60_000;
 
 const chartCache = new Map<string, ChartCacheEntry>();
 const CHART_CACHE_TTL_MS = 30 * 60_000;
@@ -164,6 +164,22 @@ async function fetchChartForCoin(id: string): Promise<number[][] | null> {
     if (!response.ok) return null;
     const data = (await response.json()) as { prices: number[][] };
     return data.prices ?? [];
+  } catch {
+    return null;
+  }
+}
+
+// Fetch 7-day daily price history for CRP from CoinPaprika (free-tier supports
+// daily intervals going back months — hourly requires a paid plan).
+async function fetchCRPChartFromCoinPaprika(): Promise<number[][] | null> {
+  const start = new Date(Date.now() - 7 * 24 * 3600_000).toISOString().split(".")[0] + "Z";
+  const url = `https://api.coinpaprika.com/v1/tickers/crp-crypton/historical?start=${start}&interval=1d`;
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as Array<{ timestamp: string; price: number }>;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return data.map((d) => [new Date(d.timestamp).getTime(), d.price]);
   } catch {
     return null;
   }
@@ -387,9 +403,16 @@ async function getCache(): Promise<CacheEntry> {
   }
   try {
     cache = await refreshCache();
-  } catch {
-    if (cache) return cache;
-    throw new Error("Failed to fetch market data from all sources");
+  } catch (err) {
+    // If a stale cache exists, keep using it rather than failing the request.
+    if (cache) {
+      console.warn("Market data refresh failed, serving stale cache:", (err as Error).message);
+      return cache;
+    }
+    // On cold start with no cache, return an empty entry so the app can load.
+    // Coins will show with no price data, which is better than a 500 error.
+    console.error("Market data unavailable on cold start:", (err as Error).message);
+    return { coingecko: [], coinpaprika: new Map(), fetchedAt: new Date(0) };
   }
   return cache;
 }
@@ -555,12 +578,6 @@ router.get(
       return;
     }
 
-    if (meta.coinPaprikaId) {
-      const result = GetCoinChartResponse.parse({ id, prices: [], hasData: false });
-      res.json(result);
-      return;
-    }
-
     const cached = chartCache.get(id);
     if (cached && cached.prices.length > 0 && Date.now() - cached.fetchedAt.getTime() < CHART_CACHE_TTL_MS) {
       const result = GetCoinChartResponse.parse({ id, prices: cached.prices, hasData: true });
@@ -568,9 +585,12 @@ router.get(
       return;
     }
 
-    // Only cache results with actual data — never cache 429/error responses so
-    // the next request will retry CoinGecko rather than serving a stale failure.
-    const prices = await fetchChartForCoin(id);
+    // For CRP (CoinPaprika-only coin) use daily historical data from CoinPaprika.
+    // For all other coins use CoinGecko. Never cache failures so the next request retries.
+    const prices = meta.coinPaprikaId
+      ? await fetchCRPChartFromCoinPaprika()
+      : await fetchChartForCoin(id);
+
     if (prices && prices.length > 0) {
       chartCache.set(id, { prices, fetchedAt: new Date() });
       const result = GetCoinChartResponse.parse({ id, prices, hasData: true });
