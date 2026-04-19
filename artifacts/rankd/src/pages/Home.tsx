@@ -870,6 +870,7 @@ export default function Home() {
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
+              <img src="/favicon.svg" alt="RANKD logo" className="w-8 h-8 rounded-md" />
               <span
                 className="text-3xl font-display font-bold tracking-tighter"
                 style={{ fontFamily: "var(--app-font-display)" }}

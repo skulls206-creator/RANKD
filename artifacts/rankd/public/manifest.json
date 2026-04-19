@@ -1,0 +1,63 @@
+{
+  "name": "RANKD — Fair Launch Crypto Tracker",
+  "short_name": "RANKD",
+  "description": "The real market cap leaderboard. Only fair-launch coins — no pre-mines, no VC, no noise.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0D0B14",
+  "theme_color": "#7C3AED",
+  "lang": "en",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Top Fair-Launch Coins",
+      "short_name": "Rankings",
+      "description": "View the fair-launch market cap leaderboard",
+      "url": "/",
+      "icons": [{ "src": "/logo-96.png", "sizes": "96x96" }]
+    }
+  ]
+}

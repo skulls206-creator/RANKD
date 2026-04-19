@@ -40,7 +40,9 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - Search, sortable columns, "Why Fair" shield tooltips, 60s auto-refresh
   - **Click-to-expand row detail panel**: 7-day recharts price chart, key stats, links (website/explorer/github), fair launch story
   - Each coin has metadata: algorithm, website, explorer, github
-- **Design**: Dark mode, amber/orange accent, Space Grotesk + JetBrains Mono fonts
+- **Design**: Dark mode, vivid purple accent (#7C3AED / `262 83% 58%`), Space Grotesk + JetBrains Mono fonts
+- **PWA**: Full Progressive Web App — manifest.json, sw.js service worker, all icon sizes (16/32/96/192/512px + apple-touch-icon)
+- **Logo**: Purple bar-chart icon (favicon.svg) matching the neon-purple gaming theme; shown in browser tab and app header
 
 ### API Server (`artifacts/api-server/`)
 - **Type**: Express 5 API server
