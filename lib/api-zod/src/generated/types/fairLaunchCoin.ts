@@ -14,7 +14,8 @@ export interface FairLaunchCoin {
   name: string;
   symbol: string;
   price?: number | null;
-  marketCap?: number | null;
+  /** Exchange-reported 24h trading volume in USD */
+  volume24h?: number | null;
   circulatingSupply?: number | null;
   change30d?: number | null;
   launchYear: number;

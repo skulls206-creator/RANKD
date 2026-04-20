@@ -7,7 +7,8 @@
  */
 
 export interface FairLaunchStats {
-  totalMarketCap: number;
+  /** Sum of exchange-reported 24h volume across all tracked fair-launch coins */
+  totalVolume24h: number;
   totalCoins: number;
   topCoin: string;
   /** Current rank of Crypton (CRP) in the fair-launch list */
