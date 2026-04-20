@@ -19,7 +19,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-type SortField = "rank" | "price" | "marketCap" | "circulatingSupply" | "change30d" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
+type SortField = "rank" | "price" | "volume24h" | "circulatingSupply" | "change30d" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
 type SortDir = "asc" | "desc";
 
 function useDragScroll() {
@@ -196,7 +196,7 @@ function SkeletonCard({ index }: { index: number }) {
 const MOBILE_SORT_OPTIONS: { field: SortField; label: string }[] = [
   { field: "rank", label: "Rank" },
   { field: "price", label: "Price" },
-  { field: "marketCap", label: "Mkt Cap" },
+  { field: "volume24h", label: "24h Vol" },
   { field: "change30d", label: "30D %" },
   { field: "activeNodes", label: "Nodes" },
   { field: "stakingApy", label: "Yield" },
@@ -618,8 +618,8 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           </div>
         </div>
         <div className="bg-background rounded-lg border border-border p-3">
-          <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Market Cap</div>
-          <div className="text-sm font-mono font-semibold text-foreground">{formatMoney(coin.marketCap)}</div>
+          <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">24h Volume</div>
+          <div className="text-sm font-mono font-semibold text-foreground">{formatMoney(coin.volume24h)}</div>
         </div>
         <div className="bg-background rounded-lg border border-border p-3">
           <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Supply</div>
@@ -818,7 +818,7 @@ export default function Home() {
     switch (sortField) {
       case "rank": aVal = a.rank; bVal = b.rank; break;
       case "price": aVal = a.price ?? -Infinity; bVal = b.price ?? -Infinity; break;
-      case "marketCap": aVal = a.marketCap ?? -Infinity; bVal = b.marketCap ?? -Infinity; break;
+      case "volume24h": aVal = a.volume24h ?? -Infinity; bVal = b.volume24h ?? -Infinity; break;
       case "circulatingSupply": aVal = a.circulatingSupply ?? -Infinity; bVal = b.circulatingSupply ?? -Infinity; break;
       case "change30d": aVal = a.change30d ?? -Infinity; bVal = b.change30d ?? -Infinity; break;
       case "launchYear": aVal = a.launchYear; bVal = b.launchYear; break;
@@ -929,9 +929,9 @@ export default function Home() {
           ) : stats ? (
             <>
               <StatCard
-                label="Fair Market Cap"
-                value={formatMoney(stats.totalMarketCap)}
-                sub="Combined fair-launch only"
+                label="Total 24H Volume"
+                value={formatMoney(stats.totalVolume24h)}
+                sub="Reported exchange volume"
               />
               <StatCard
                 label="Coins Tracked"
@@ -1020,8 +1020,8 @@ export default function Home() {
                   <th className="px-4 py-3 text-right">
                     <SortButton field="price" label="Price" />
                   </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortButton field="marketCap" label="Market Cap" />
+                  <th className="px-4 py-3 text-right" title="Exchange-reported 24h volume. May include inflated figures from unregulated venues.">
+                    <SortButton field="volume24h" label="24h Vol" />
                   </th>
                   <th className="px-4 py-3 text-right">
                     <SortButton field="circulatingSupply" label="Circ. Supply" />
@@ -1146,10 +1146,10 @@ export default function Home() {
                               </span>
                             </td>
 
-                            {/* Market Cap */}
+                            {/* 24h Volume */}
                             <td className="px-4 py-4 text-right">
                               <span className="font-mono text-sm tabular-nums text-foreground">
-                                {formatMoney(coin.marketCap)}
+                                {formatMoney(coin.volume24h)}
                               </span>
                             </td>
 

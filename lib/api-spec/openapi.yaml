@@ -121,9 +121,10 @@ components:
         price:
           type: number
           nullable: true
-        marketCap:
+        volume24h:
           type: number
           nullable: true
+          description: Exchange-reported 24h trading volume in USD
         circulatingSupply:
           type: number
           nullable: true
@@ -226,8 +227,9 @@ components:
     FairLaunchStats:
       type: object
       properties:
-        totalMarketCap:
+        totalVolume24h:
           type: number
+          description: Sum of exchange-reported 24h volume across all tracked fair-launch coins
         totalCoins:
           type: integer
         topCoin:
@@ -239,7 +241,7 @@ components:
         lastUpdated:
           type: string
       required:
-        - totalMarketCap
+        - totalVolume24h
         - totalCoins
         - topCoin
         - lastUpdated

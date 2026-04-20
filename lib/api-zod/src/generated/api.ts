@@ -34,7 +34,7 @@ export const GetFairLaunchCoinsResponse = zod.object({
       name: zod.string(),
       symbol: zod.string(),
       price: zod.number().nullish(),
-      marketCap: zod.number().nullish(),
+      volume24h: zod.number().nullish().describe("Exchange-reported 24h trading volume in USD"),
       circulatingSupply: zod.number().nullish(),
       change30d: zod.number().nullish(),
       launchYear: zod.number(),
@@ -103,7 +103,7 @@ export const GetCoinChartResponse = zod.object({
  * @summary Get summary stats
  */
 export const GetFairLaunchStatsResponse = zod.object({
-  totalMarketCap: zod.number(),
+  totalVolume24h: zod.number().describe("Sum of exchange-reported 24h volume across all tracked fair-launch coins"),
   totalCoins: zod.number(),
   topCoin: zod.string(),
   cryptonRank: zod

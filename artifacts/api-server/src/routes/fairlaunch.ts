@@ -22,6 +22,7 @@ interface CoinGeckoMarketData {
   image: string;
   current_price: number | null;
   market_cap: number | null;
+  total_volume: number | null;
   circulating_supply: number | null;
   price_change_percentage_30d_in_currency: number | null;
   sparkline_in_7d?: { price: number[] } | null;
@@ -37,6 +38,7 @@ interface CoinPaprikaMarketData {
     USD: {
       price: number | null;
       market_cap: number | null;
+      volume_24h?: number | null;
       percent_change_30d?: number | null;
     };
   };
@@ -134,6 +136,7 @@ interface NormalizedMarketData {
   id: string;
   price: number | null;
   marketCap: number | null;
+  volume24h: number | null;
   circulatingSupply: number | null;
   change30d: number | null;
   imageUrl: string | null;
@@ -362,6 +365,7 @@ async function fetchCoinPaprikaData(
       id: meta.id,
       price,
       marketCap,
+      volume24h: data.quotes?.USD?.volume_24h ?? null,
       circulatingSupply,
       change30d: data.quotes?.USD?.percent_change_30d ?? null,
       imageUrl: meta.logoUrl ?? `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
@@ -422,6 +426,7 @@ function normalizeCoingecko(d: CoinGeckoMarketData | undefined, meta: FairLaunch
     id: meta.id,
     price: d?.current_price ?? null,
     marketCap: d?.market_cap ?? null,
+    volume24h: d?.total_volume ?? null,
     circulatingSupply: d?.circulating_supply ?? null,
     change30d: d?.price_change_percentage_30d_in_currency ?? null,
     imageUrl: d?.image ?? null,
@@ -444,7 +449,7 @@ function buildCoinResponse(
     name: meta.name,
     symbol: meta.symbol.toUpperCase(),
     price: live.price,
-    marketCap: live.marketCap,
+    volume24h: live.volume24h,
     circulatingSupply: live.circulatingSupply,
     change30d: live.change30d,
     launchYear: meta.launchYear,
@@ -496,7 +501,7 @@ router.get(
       let live: NormalizedMarketData;
       if (meta.coinPaprikaId) {
         live = cacheEntry.coinpaprika.get(meta.id) ?? {
-          id: meta.id, price: null, marketCap: null,
+          id: meta.id, price: null, marketCap: null, volume24h: null,
           circulatingSupply: null, change30d: null, imageUrl: null,
         };
       } else {
@@ -622,7 +627,7 @@ router.get(
       let live: NormalizedMarketData;
       if (meta.coinPaprikaId) {
         live = cacheEntry.coinpaprika.get(meta.id) ?? {
-          id: meta.id, price: null, marketCap: null,
+          id: meta.id, price: null, marketCap: null, volume24h: null,
           circulatingSupply: null, change30d: null, imageUrl: null,
         };
       } else {
@@ -638,8 +643,8 @@ router.get(
       return a.meta.name.localeCompare(b.meta.name);
     });
 
-    const totalMarketCap = withData.reduce(
-      (sum, { live }) => sum + (live.marketCap ?? 0),
+    const totalVolume24h = withData.reduce(
+      (sum, { live }) => sum + (live.volume24h ?? 0),
       0,
     );
 
@@ -648,7 +653,7 @@ router.get(
     const cryptonRank = cryptonIdx >= 0 ? cryptonIdx + 1 : null;
 
     const result = GetFairLaunchStatsResponse.parse({
-      totalMarketCap,
+      totalVolume24h,
       totalCoins: FAIR_LAUNCH_COINS.length,
       topCoin,
       cryptonRank,

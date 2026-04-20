@@ -17,7 +17,8 @@ export interface FairLaunchCoin {
   name: string;
   symbol: string;
   price?: number | null;
-  marketCap?: number | null;
+  /** Exchange-reported 24h trading volume in USD */
+  volume24h?: number | null;
   circulatingSupply?: number | null;
   change30d?: number | null;
   launchYear: number;
@@ -60,7 +61,8 @@ export interface CoinChartResponse {
 }
 
 export interface FairLaunchStats {
-  totalMarketCap: number;
+  /** Sum of exchange-reported 24h volume across all tracked fair-launch coins */
+  totalVolume24h: number;
   totalCoins: number;
   topCoin: string;
   /** Current rank of Crypton (CRP) in the fair-launch list */
