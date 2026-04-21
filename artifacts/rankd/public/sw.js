@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rankd-v1';
+const CACHE_NAME = 'rankd-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
