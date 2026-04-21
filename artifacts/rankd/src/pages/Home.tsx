@@ -14,6 +14,7 @@ import {
   Award, Globe, ExternalLink, Github, ChevronDown, ChevronUp,
   Cpu, Activity, Percent, Tag, Radio,
 } from "lucide-react";
+import { ContextMenuPortal } from "@/components/ContextMenu";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -782,7 +783,7 @@ export default function Home() {
     },
   });
 
-  const { data: stats, isLoading: statsLoading } = useGetFairLaunchStats({
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useGetFairLaunchStats({
     query: {
       queryKey: getGetFairLaunchStatsQueryKey(),
       refetchInterval: 60_000,
@@ -791,6 +792,11 @@ export default function Home() {
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
     },
   });
+
+  const handleRefreshData = useCallback(() => {
+    refetchCoins();
+    refetchStats();
+  }, [refetchCoins, refetchStats]);
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -991,6 +997,12 @@ export default function Home() {
             sorted.map((coin, idx) => (
               <motion.div
                 key={coin.id}
+                data-coin-id={coin.id}
+                data-coin-name={coin.name}
+                data-coin-symbol={coin.symbol}
+                data-coin-price={coin.price != null ? formatPrice(coin.price) : ""}
+                data-coin-website={coin.website ?? ""}
+                data-coin-explorer={coin.explorer ?? ""}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: idx * 0.02 }}
@@ -1089,6 +1101,12 @@ export default function Home() {
                         <Fragment key={coin.id}>
                           <motion.tr
                             data-testid={`row-coin-${coin.symbol}`}
+                            data-coin-id={coin.id}
+                            data-coin-name={coin.name}
+                            data-coin-symbol={coin.symbol}
+                            data-coin-price={coin.price != null ? formatPrice(coin.price) : ""}
+                            data-coin-website={coin.website ?? ""}
+                            data-coin-explorer={coin.explorer ?? ""}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: idx * 0.02 }}
@@ -1298,6 +1316,8 @@ export default function Home() {
           </p>
         </footer>
       </main>
+
+      <ContextMenuPortal onRefreshData={handleRefreshData} />
     </div>
   );
 }
