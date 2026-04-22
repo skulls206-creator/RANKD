@@ -1,22 +1,11 @@
-const CACHE_NAME = 'rankd-v2';
-const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/favicon.svg',
-  '/logo-192.png',
-  '/logo-512.png',
-  '/apple-touch-icon.png',
-];
+const CACHE_NAME = 'rankd-v3';
 
-// Install: pre-cache static shell
+// Install: skip waiting immediately — no pre-caching of HTML
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
   self.skipWaiting();
 });
 
-// Activate: purge old caches
+// Activate: nuke every old cache version
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -26,18 +15,22 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch strategy:
-//  - API calls → Network first, stale cache fallback
-//  - Everything else → Cache first, network fallback
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and cross-origin requests
+  // Skip non-GET and cross-origin
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
+  // API → network first, no caching
   if (url.pathname.startsWith('/api/')) {
-    // Network first for API
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // HTML navigation (the app shell) → ALWAYS network first.
+  // This is what was burning you: old HTML was served from cache on iOS.
+  if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((res) => {
@@ -47,18 +40,22 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => caches.match(request))
     );
-  } else {
-    // Cache first for static assets
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((res) => {
+    return;
+  }
+
+  // Hashed static assets (JS, CSS, images) → cache first, network fallback.
+  // Vite gives these content-hashed URLs so they auto-bust on rebuild.
+  event.respondWith(
+    caches.match(request).then(
+      (cached) =>
+        cached ||
+        fetch(request).then((res) => {
+          if (res.ok) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-            return res;
-          })
-      )
-    );
-  }
+          }
+          return res;
+        })
+    )
+  );
 });
