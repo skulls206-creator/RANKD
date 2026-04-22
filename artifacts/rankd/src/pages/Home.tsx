@@ -541,7 +541,15 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
               />
               <YAxis
                 domain={yDomain as [number, number]}
-                tickFormatter={(v) => v < 0.01 ? `$${v.toFixed(5)}` : v < 1 ? `$${v.toFixed(3)}` : `$${(v as number).toLocaleString()}`}
+                tickFormatter={(v: number) => {
+                  if (v < 0.001) return `$${v.toFixed(6)}`;
+                  if (v < 0.01)  return `$${v.toFixed(4)}`;
+                  if (v < 1)     return `$${v.toFixed(3)}`;
+                  if (v < 10)    return `$${v.toFixed(1)}`;
+                  if (v < 1000)  return `$${Math.round(v)}`;
+                  if (v < 1e6)   return `$${(v / 1000).toFixed(1)}K`;
+                  return `$${(v / 1e6).toFixed(1)}M`;
+                }}
                 tick={{ fontSize: 10, fill: "#6b7280" }}
                 tickLine={false}
                 axisLine={false}
