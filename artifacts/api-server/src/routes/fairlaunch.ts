@@ -76,11 +76,17 @@ interface LiveNodeEntry {
 const liveNodeCache = new Map<string, LiveNodeEntry>();
 const LIVE_NODE_TTL_MS = 30 * 60_000;
 
+function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 5_000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout));
+}
+
 async function fetchBitcoinNodeCount(): Promise<number | null> {
   const cached = liveNodeCache.get("bitcoin");
   if (cached && Date.now() - cached.fetchedAt.getTime() < LIVE_NODE_TTL_MS) return cached.count;
   try {
-    const resp = await fetch("https://bitnodes.io/api/v1/snapshots/latest/", {
+    const resp = await fetchWithTimeout("https://bitnodes.io/api/v1/snapshots/latest/", {
       headers: { Accept: "application/json" },
     });
     if (!resp.ok) return null;
@@ -98,7 +104,7 @@ async function fetchFluxNodeCount(): Promise<number | null> {
   const cached = liveNodeCache.get("zelcash");
   if (cached && Date.now() - cached.fetchedAt.getTime() < LIVE_NODE_TTL_MS) return cached.count;
   try {
-    const resp = await fetch("https://api.runonflux.io/daemon/getzelnodecount", {
+    const resp = await fetchWithTimeout("https://api.runonflux.io/daemon/getzelnodecount", {
       headers: { Accept: "application/json" },
     });
     if (!resp.ok) return null;
@@ -116,7 +122,7 @@ async function fetchMoneroNodeCount(): Promise<number | null> {
   const cached = liveNodeCache.get("monero");
   if (cached && Date.now() - cached.fetchedAt.getTime() < LIVE_NODE_TTL_MS) return cached.count;
   try {
-    const resp = await fetch("https://monero.fail/nodes.json", {
+    const resp = await fetchWithTimeout("https://monero.fail/nodes.json", {
       headers: { Accept: "application/json" },
     });
     if (!resp.ok) return null;
@@ -243,7 +249,14 @@ interface UtopiaData {
 async function fetchUtopiaData(): Promise<UtopiaData> {
   try {
     const url = "https://utopian.is/api/explorer/blocks/get";
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4_000);
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) return { supply: null, activeNodes: null };
     const blocks = (await response.json()) as UtopiaExplorerBlock[];
     const latest = blocks?.[0];
@@ -325,6 +338,15 @@ async function refreshAllGitHubReleases(logger?: { info: (msg: string) => void; 
   }
 
   logger?.info("GitHub cache refresh: complete");
+}
+
+export function startNodeCountRefresh(logger?: { info: (msg: string) => void; error: (msg: string) => void }): void {
+  const refresh = () =>
+    Promise.all([fetchBitcoinNodeCount(), fetchFluxNodeCount(), fetchMoneroNodeCount()])
+      .then(() => logger?.info("Node count cache: refreshed"))
+      .catch(() => logger?.error("Node count cache: refresh failed"));
+  void refresh();
+  setInterval(refresh, 25 * 60_000).unref();
 }
 
 export async function startGitHubCacheRefresh(logger?: { info: (msg: string) => void; error: (msg: string) => void }): Promise<void> {
@@ -518,7 +540,7 @@ router.get(
     });
 
     const nullGitHubEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date(0) };
-    const [githubResults, bitcoinNodes, fluxNodes, moneroNodes] = await Promise.all([
+    const [githubResults] = await Promise.all([
       Promise.all(
         allWithData.map(({ meta }) =>
           meta.github && !meta.softwareVersion
@@ -526,15 +548,12 @@ router.get(
             : Promise.resolve(nullGitHubEntry),
         ),
       ),
-      fetchBitcoinNodeCount(),
-      fetchFluxNodeCount(),
-      fetchMoneroNodeCount(),
     ]);
 
     const liveNodeCounts = new Map<string, number | null>([
-      ["bitcoin", bitcoinNodes],
-      ["zelcash", fluxNodes],
-      ["monero", moneroNodes],
+      ["bitcoin", liveNodeCache.get("bitcoin")?.count ?? null],
+      ["zelcash", liveNodeCache.get("zelcash")?.count ?? null],
+      ["monero", liveNodeCache.get("monero")?.count ?? null],
     ]);
 
     const crpOverrides = getCRPOverrides();

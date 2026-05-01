@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startChartCacheWarmup, startGitHubCacheRefresh } from "./routes/fairlaunch";
+import { startChartCacheWarmup, startGitHubCacheRefresh, startNodeCountRefresh } from "./routes/fairlaunch";
 
 const rawPort = process.env["PORT"];
 
@@ -29,6 +29,7 @@ const refreshLogger = {
 function listenWithRetry(attemptsLeft: number, delayMs: number): void {
   const server = app.listen(port, () => {
     logger.info({ port }, "Server listening");
+    startNodeCountRefresh(refreshLogger);
     void startGitHubCacheRefresh(refreshLogger);
     void startChartCacheWarmup(refreshLogger);
   });
