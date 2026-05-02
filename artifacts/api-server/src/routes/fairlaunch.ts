@@ -44,15 +44,6 @@ interface CoinPaprikaMarketData {
   };
 }
 
-interface UtopiaExplorerBlock {
-  id: number;
-  CRPSupply: string;
-  TotalCRPAmount: string;
-  BlockReward: string;
-  miningThreads: string;
-  created_at: string;
-}
-
 interface GitHubRelease {
   tag_name: string;
   published_at: string;
@@ -241,34 +232,77 @@ async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
   return response.json() as Promise<CoinGeckoMarketData[]>;
 }
 
-interface UtopiaData {
-  supply: number | null;
-  activeNodes: number | null;
+interface UtopiaNodeCountCache {
+  count: number | null;
+  fetchedAt: Date;
 }
 
-async function fetchUtopiaData(): Promise<UtopiaData> {
+const utopiaNodeCountCache: { entry: UtopiaNodeCountCache | null } = { entry: null };
+const UTOPIA_NODE_TTL_MS = 5 * 60_000;
+
+async function fetchUtopiaNodeCount(): Promise<number | null> {
+  const cached = utopiaNodeCountCache.entry;
+  if (cached && Date.now() - cached.fetchedAt.getTime() < UTOPIA_NODE_TTL_MS) {
+    return cached.count;
+  }
+
+  const vpsUrl = process.env["UTOPIA_VPS_URL"];
+  const relayToken = process.env["UTOPIA_RELAY_TOKEN"];
+  if (!vpsUrl || !relayToken) return null;
+
+  const store = (count: number | null) => {
+    utopiaNodeCountCache.entry = { count, fetchedAt: new Date() };
+    return count;
+  };
+
   try {
-    const url = "https://utopian.is/api/explorer/blocks/get";
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4_000);
-    let response: Response;
-    try {
-      response = await fetch(url, { headers: { Accept: "application/json" }, signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
+    const resp = await fetchWithTimeout(
+      `${vpsUrl}/api/1.0`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
+        body: JSON.stringify({ method: "getMiningInfo" }),
+      },
+      8_000,
+    );
+    if (!resp.ok) {
+      console.warn(`[utopia-relay] getMiningInfo returned HTTP ${resp.status}`);
+      return store(null);
     }
-    if (!response.ok) return { supply: null, activeNodes: null };
-    const blocks = (await response.json()) as UtopiaExplorerBlock[];
-    const latest = blocks?.[0];
-    if (!latest) return { supply: null, activeNodes: null };
-    const supply = latest.CRPSupply ? parseFloat(latest.CRPSupply) : null;
-    const activeNodes = latest.miningThreads ? parseInt(latest.miningThreads, 10) : null;
-    return {
-      supply: supply != null && !isNaN(supply) ? supply : null,
-      activeNodes: activeNodes != null && !isNaN(activeNodes) ? activeNodes : null,
-    };
-  } catch {
-    return { supply: null, activeNodes: null };
+    const data = (await resp.json()) as Record<string, unknown>;
+    const miningThreads = data["miningThreads"] ?? data["activeNodes"] ?? data["nodesCount"];
+    if (miningThreads != null) {
+      const count = parseInt(String(miningThreads), 10);
+      if (!isNaN(count)) return store(count);
+    }
+
+    // Fallback: pull miningThreads from the latest block
+    const blockResp = await fetchWithTimeout(
+      `${vpsUrl}/api/1.0`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
+        body: JSON.stringify({ method: "getMiningBlocksWithTreasury", params: { fromBlockId: 0, toBlockId: 0, limit: 1 } }),
+      },
+      8_000,
+    );
+    if (!blockResp.ok) {
+      console.warn(`[utopia-relay] getMiningBlocksWithTreasury returned HTTP ${blockResp.status}`);
+      return store(null);
+    }
+    const blockData = (await blockResp.json()) as unknown;
+    const blocks = Array.isArray(blockData) ? blockData : (blockData as Record<string, unknown>)["blocks"];
+    if (Array.isArray(blocks) && blocks.length > 0) {
+      const threads = (blocks[0] as Record<string, unknown>)["miningThreads"];
+      if (threads != null) {
+        const count = parseInt(String(threads), 10);
+        if (!isNaN(count)) return store(count);
+      }
+    }
+    return store(null);
+  } catch (err) {
+    console.warn("[utopia-relay] fetch failed:", (err as Error).message);
+    return store(null);
   }
 }
 
@@ -368,17 +402,17 @@ async function fetchCoinPaprikaData(
 ): Promise<NormalizedMarketData | null> {
   if (!meta.coinPaprikaId) return null;
   try {
-    const [paprikaResp, utopiaData] = await Promise.all([
+    const [paprikaResp, utopiaNodeCount] = await Promise.all([
       fetch(`https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(meta.coinPaprikaId)}`, {
         headers: { Accept: "application/json" },
       }),
-      meta.utopiaExplorer ? fetchUtopiaData() : Promise.resolve(null),
+      meta.utopiaExplorer ? fetchUtopiaNodeCount() : Promise.resolve(null),
     ]);
 
     if (!paprikaResp.ok) return null;
     const data = (await paprikaResp.json()) as CoinPaprikaMarketData;
     const price = data.quotes?.USD?.price ?? null;
-    const circulatingSupply = utopiaData?.supply ?? data.circulating_supply ?? data.total_supply ?? null;
+    const circulatingSupply = data.circulating_supply ?? data.total_supply ?? null;
     const marketCap = price != null && circulatingSupply != null
       ? price * circulatingSupply
       : data.quotes?.USD?.market_cap ?? null;
@@ -391,7 +425,7 @@ async function fetchCoinPaprikaData(
       circulatingSupply,
       change30d: data.quotes?.USD?.percent_change_30d ?? null,
       imageUrl: meta.logoUrl ?? `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
-      activeNodes: utopiaData?.activeNodes ?? null,
+      activeNodes: utopiaNodeCount ?? null,
     };
   } catch {
     return null;
