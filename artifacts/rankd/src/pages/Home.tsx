@@ -20,7 +20,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-type SortField = "rank" | "price" | "volume24h" | "circulatingSupply" | "change30d" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
+type SortField = "rank" | "price" | "volume24h" | "change30d" | "launchYear" | "stakingApy" | "softwareVersion" | "lastReleasedAt" | "activeNodes";
 type SortDir = "asc" | "desc";
 
 function useDragScroll() {
@@ -630,10 +630,6 @@ function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">24h Volume</div>
           <div className="text-sm font-mono font-semibold text-foreground">{formatMoney(coin.volume24h)}</div>
         </div>
-        <div className="bg-background rounded-lg border border-border p-3">
-          <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">Supply</div>
-          <div className="text-sm font-mono font-semibold text-foreground">{formatNumber(coin.circulatingSupply)}</div>
-        </div>
         {coin.stakingApy != null && (
           <div className="col-span-2 bg-amber-950/20 rounded-lg border border-primary/30 p-3">
             <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1 flex items-center gap-1">
@@ -833,7 +829,6 @@ export default function Home() {
       case "rank": aVal = a.rank; bVal = b.rank; break;
       case "price": aVal = a.price ?? -Infinity; bVal = b.price ?? -Infinity; break;
       case "volume24h": aVal = a.volume24h ?? -Infinity; bVal = b.volume24h ?? -Infinity; break;
-      case "circulatingSupply": aVal = a.circulatingSupply ?? -Infinity; bVal = b.circulatingSupply ?? -Infinity; break;
       case "change30d": aVal = a.change30d ?? -Infinity; bVal = b.change30d ?? -Infinity; break;
       case "launchYear": aVal = a.launchYear; bVal = b.launchYear; break;
       case "stakingApy": aVal = a.stakingApy ?? -Infinity; bVal = b.stakingApy ?? -Infinity; break;
@@ -1044,9 +1039,6 @@ export default function Home() {
                     <SortButton field="volume24h" label="24h Vol" />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortButton field="circulatingSupply" label="Circ. Supply" />
-                  </th>
-                  <th className="px-4 py-3 text-right">
                     <SortButton field="change30d" label="30D %" />
                   </th>
                   <th className="px-4 py-3 text-center">
@@ -1176,13 +1168,6 @@ export default function Home() {
                             <td className="px-4 py-4 text-right">
                               <span className="font-mono text-sm tabular-nums text-foreground">
                                 {formatMoney(coin.volume24h)}
-                              </span>
-                            </td>
-
-                            {/* Circulating Supply */}
-                            <td className="px-4 py-4 text-right">
-                              <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                                {formatNumber(coin.circulatingSupply)}
                               </span>
                             </td>
 
