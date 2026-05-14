@@ -25,6 +25,17 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-14 19:29 UTC — nebula-agent
+**What**: CORS verification confirmed — all coins load on live site
+**Why**: User tested `rankd.khurk.xyz` and confirmed all cryptocurrency data renders correctly
+**Files**: none changed — verification only
+**Build/Deploy**: n/a
+**Verified**: User-reported confirmation that the site loads all coins. The `CORS_ALLOWED_ORIGINS` deployment secret (`https://rankd.khurk.xyz,https://skulls206-creator.github.io`) is working in production. Replit API at `rankd-x.replit.app` now accepts cross-origin requests from the custom domain. Re-deployed at checkpoint `f4e8e34`.
+**Next agent needs to know**: The open re-verify item from the 17:45 entry is now closed. CORS is confirmed working on the live site.
+**Open questions**: (none)
+
+---
+
 ### 2026-05-14 17:50 UTC — replit-agent
 **What**: Set up this AAR ledger system
 **Why**: User wants a sync surface between Replit Agent and nebula.gg Agent for every edit/build
