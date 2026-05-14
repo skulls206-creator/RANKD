@@ -47,3 +47,23 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.upm/
+.replit
+replit.nix
+.config/
+.breakpoints
+
+# Secrets / env files — never commit
+.env
+.env.*
+!.env.example
+
+# Private: the Utopia VPS relay lives only on the user's VPS and is intentionally
+# excluded from the public repository. See README for setup notes.
+relay.py
+
+# User-uploaded local assets (not served by the web app; safe to omit from repo)
+attached_assets/
+
+# Local agent / planning artifacts
+.local/
