@@ -2,7 +2,7 @@
 
 A CoinMarketCap-style leaderboard for **fair-launch-only** cryptocurrencies — no pre-mines, no VC allocations, no insider wallets. Internally ranked by market cap (never exposed publicly); only 24-hour exchange volume is shown.
 
-Live: **https://&lt;your-github-username&gt;.github.io/rankd/**
+Live: **https://rankd.khurk.xyz**
 
 ---
 
@@ -65,12 +65,14 @@ When running on Replit, the frontend calls the API on the same host (relative `/
 
 Pushes to `main` trigger `.github/workflows/deploy.yml`, which:
 1. Installs deps with pnpm
-2. Builds `artifacts/rankd` with `BASE_PATH=/rankd/` and `VITE_API_BASE_URL=<repo variable>`
+2. Builds `artifacts/rankd` with `BASE_PATH=/` (custom domain) and `VITE_API_BASE_URL=<repo variable>`
 3. Publishes `artifacts/rankd/dist/public` to Pages
 
 **Required GitHub repository variables** (Settings → Secrets and variables → Actions → Variables):
-- `RANKD_API_BASE_URL` — full origin of the Replit-deployed API server (e.g. `https://your-app.replit.app`)
-- `RANKD_BASE_PATH` *(optional)* — defaults to `/rankd/`; change if your repo name differs
+- `RANKD_API_BASE_URL` — full origin of the Replit-deployed API server (e.g. `https://rankd-x.replit.app`)
+- `RANKD_BASE_PATH` *(optional)* — defaults to `/` (custom domain at root). Set to `/RANKD/` only if you switch back to the github.io subpath URL.
+
+**Custom domain**: `artifacts/rankd/public/CNAME` contains `rankd.khurk.xyz`. GitHub Pages picks this up automatically on deploy. DNS: point `rankd` CNAME → `skulls206-creator.github.io` on khurk.xyz.
 
 **Pages settings**: Settings → Pages → Source → "GitHub Actions".
 
@@ -90,17 +92,17 @@ git remote -v                    # should show origin → github.com/<you>/rankd
 ```
 
 After the push:
-1. Go to **Settings → Pages** in the new repo → set **Source: GitHub Actions**
-2. Go to **Settings → Secrets and variables → Actions → Variables** and add:
-   - `RANKD_API_BASE_URL` = your Replit deployment URL (e.g. `https://rankd-api.<your-user>.replit.app`)
-   - `RANKD_BASE_PATH` = `/rankd/` (only if your repo name differs)
-3. Push any commit (or click "Run workflow" on the Deploy action) to trigger the first build
-4. Once the action completes, visit `https://<your-user>.github.io/rankd/`
+1. Go to **Settings → Pages** → set **Source: GitHub Actions**
+2. After the first deploy completes, **Settings → Pages → Custom domain** = `rankd.khurk.xyz` (the `CNAME` file already commits this, but the UI toggle enables the Pages-side enforcement and the "Enforce HTTPS" checkbox)
+3. Go to **Settings → Secrets and variables → Actions → Variables** and add:
+   - `RANKD_API_BASE_URL` = `https://rankd-x.replit.app`
+4. Push any commit (or click "Run workflow" on the Deploy action) to trigger a build
+5. Once DNS propagates, visit `https://rankd.khurk.xyz`
 
 ### API → Replit deployment
 
 Already deployed via Replit's deployment system. On the deployment, set:
-- `CORS_ALLOWED_ORIGINS` — comma-separated list, must include the GitHub Pages origin: `https://<your-github-username>.github.io`
+- `CORS_ALLOWED_ORIGINS` = `https://rankd.khurk.xyz` (comma-separated if more origins ever need to be added)
 - `UTOPIA_VPS_URL`, `UTOPIA_RELAY_TOKEN`, `UTOPIA_API_TOKEN`, `UTOPIA_PUBLIC_KEY` — for the Crypton node-count relay
 - All other secrets currently configured in the Replit dev workspace
 

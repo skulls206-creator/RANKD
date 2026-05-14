@@ -43,7 +43,10 @@ jobs:
           #   vars.RANKD_API_BASE_URL      e.g. "https://<your-app>.replit.app"
           #   PORT                         dev placeholder required by vite.config
           PORT: "5173"
-          BASE_PATH: ${{ vars.RANKD_BASE_PATH || '/rankd/' }}
+          # Custom domain (rankd.khurk.xyz) serves from root, so BASE_PATH=/.
+          # Override with the RANKD_BASE_PATH repo variable if you ever move
+          # back to a github.io/<repo>/ subpath URL.
+          BASE_PATH: ${{ vars.RANKD_BASE_PATH || '/' }}
           VITE_API_BASE_URL: ${{ vars.RANKD_API_BASE_URL }}
           NODE_ENV: production
         run: pnpm --filter @workspace/rankd run build
