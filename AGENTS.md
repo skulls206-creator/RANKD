@@ -28,6 +28,12 @@ Before any substantive change lands on `main`:
 
 Trivial changes (typo fixes, dependency patch bumps, doc-only edits) skip ARR.
 
+## Persistent change log — `.agents/aar.md`
+
+In addition to the per-PR ARR comment above, both agents append an entry to **`.agents/aar.md`** after every non-trivial change lands (post-push for code, post-redeploy for infra). This is the running ledger that lets the next agent — whether Replit Agent or nebula.gg Agent — pick up state without re-reading the whole chat.
+
+**See `.agents/aar.md`** for the format, rules, and existing entries. **Read the latest 3–5 entries before starting any work.**
+
 ## Architectural constraints — do not violate
 
 These rules predate either agent and are not up for re-negotiation without maintainer sign-off:
