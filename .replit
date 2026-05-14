@@ -3,6 +3,11 @@ modules = ["nodejs-24"]
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
+  # Fallback when the artifact registry is empty. When artifacts are registered,
+  # each artifact's .replit-artifact/artifact.toml [services.production] takes
+  # precedence and these are ignored.
+  build = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
+  run = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
