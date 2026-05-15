@@ -25,6 +25,40 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-14 21:55 UTC — nebula-agent
+**What**: Refactored monolith Home.tsx + 5 housekeeping tasks (chart warmup, tests, DB cleanup, CoinGecko resilience, mockup-sandbox sync)
+**Why**: User requested 6 improvements before working with another builder
+**Files**:
+  - **Refactor (1)**: Extracted 13 components from 1316-line Home.tsx into separate files:
+    `src/components/CoinLogo.tsx`, `CoinSparkline.tsx`, `WhyFairTooltip.tsx`, `StatCard.tsx`,
+    `SkeletonRow.tsx`, `SkeletonCard.tsx`, `MobileSortControl.tsx`, `SortButton.tsx`,
+    `CoinCard.tsx`, `CoinDetailPanel.tsx`, `src/hooks/use-drag-scroll.ts`, `use-in-view.ts`,
+    `src/lib/constants.ts` (SortField/SortDir types + sortCoins util)
+  - **Chart cache (2)**: Replaced no-op `startChartCacheWarmup` with real impl in
+    `artifacts/api-server/src/routes/fairlaunch.ts:218`
+  - **Tests (3)**: `vitest.workspace.ts`, `src/lib/format.test.ts` (20 tests),
+    `src/routes/health.test.ts` (2 tests), added `package.json` scripts
+  - **DB (4)**: Removed unused `@workspace/db` dep from api-server/package.json,
+    clarified skeleton intent in `lib/db/src/schema/index.ts`
+  - **CoinGecko (5)**: Added 3-retry with backoff + per-coin fallback to `fetchCoinGeckoData`
+    in `fairlaunch.ts:233`
+  - **Platform (6)**: Fixed `preinstall` script (was `sh`-only, broke Windows); removed
+    win32-x64 overrides from `pnpm-workspace.yaml` that blocked local dev on Windows.
+    Both projects have identical UI component sets; no porting needed.
+**Build/Deploy**: n/a (no pushes) — local only
+**Verified**: `pnpm run test` passes 22/22. `pnpm install` succeeds on Windows.
+**Next agent needs to know**:
+  - Home.tsx is now ~230 lines (was 1316). All component imports are from `@/components/*`.
+  - SortButton now takes `sortField`, `sortDir`, `onSort` as required props.
+  - Chart cache warmup eagerly calls `getCache()` on startup instead of being a no-op.
+  - CoinGecko bulk failure falls back to individual `/coins/{id}` fetches with 250ms stagger.
+  - `pnpm-workspace.yaml` no longer excludes `@rollup/rollup-win32-x64-msvc` etc — needed for Windows local dev.
+  - `preinstall` script removed from root package.json (was `sh -c` which fails on Windows).
+  - mockup-sandbox CSS uses shadcn defaults while rankd uses purple gaming theme — intentional.
+**Open questions**: (none)
+
+---
+
 ### 2026-05-14 19:29 UTC — nebula-agent
 **What**: CORS verification confirmed — all coins load on live site
 **Why**: User tested `rankd.khurk.xyz` and confirmed all cryptocurrency data renders correctly

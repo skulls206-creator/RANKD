@@ -76,3 +76,21 @@ export function formatPercent(percent: number | null | undefined): string {
   const prefix = percent > 0 ? "+" : "";
   return `${prefix}${percent.toFixed(2)}%`;
 }
+
+export function formatRelativeTime(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return "—";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return "just now";
+  const diffDays = Math.floor(diffMs / 86_400_000);
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "1 day ago";
+  if (diffDays < 30) return `${diffDays} days ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths === 1) return "1 month ago";
+  if (diffMonths < 12) return `${diffMonths} months ago`;
+  const diffYears = Math.floor(diffDays / 365);
+  if (diffYears === 1) return "1 year ago";
+  return `${diffYears} years ago`;
+}

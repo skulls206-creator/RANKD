@@ -214,22 +214,81 @@ function seedChartCacheFromSparklines(
   if (seeded > 0) logger.info(`Chart cache: seeded ${seeded} coins from sparkline data`);
 }
 
-// Kept as a no-op export so index.ts import stays valid.
-// Sparklines are now seeded during the regular coins fetch via seedChartCacheFromSparklines.
-export function startChartCacheWarmup(_logger: {
+// Eagerly populate the chart cache on startup by triggering the first market
+// data fetch. Chart data arrives via sparklines bundled in the CoinGecko bulk
+// response — no extra API calls needed. After this, the first user request to
+// the chart endpoint will find a warm cache.
+export async function startChartCacheWarmup(logger?: {
   info: (msg: string) => void;
   error: (msg: string) => void;
-}): void {
-  // intentional no-op — chart data arrives via the bulk sparkline fetch
+}): Promise<void> {
+  try {
+    await getCache();
+    logger?.info("Chart cache: warmed up from initial market data fetch");
+  } catch (err) {
+    logger?.error(`Chart cache: initial warmup failed: ${(err as Error).message}`);
+  }
 }
 
 async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
   const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(COINGECKO_IDS)}&order=market_cap_desc&per_page=250&page=1&sparkline=true&price_change_percentage=30d`;
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!response.ok) {
-    throw new Error(`CoinGecko API error: ${response.status}`);
+
+  // Retry the bulk call twice with linear backoff
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (response.ok) {
+        return response.json() as Promise<CoinGeckoMarketData[]>;
+      }
+      if (response.status === 429 && attempt < 2) {
+        // Rate limited — wait and retry
+        await new Promise((r) => setTimeout(r, 1_000 * (attempt + 1)));
+        continue;
+      }
+      console.warn(`CoinGecko bulk API error: ${response.status} (attempt ${attempt + 1})`);
+    } catch {
+      console.warn(`CoinGecko bulk fetch network error (attempt ${attempt + 1})`);
+    }
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 1_000 * (attempt + 1)));
+    }
   }
-  return response.json() as Promise<CoinGeckoMarketData[]>;
+
+  // Bulk call exhausted all retries — fall back to individual coin lookups.
+  // This is slower but ensures every coin gets a chance at live price data.
+  console.warn("CoinGecko bulk failed, falling back to per-coin fetches");
+  const ids = COINGECKO_IDS.split(",");
+  const results: CoinGeckoMarketData[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i]!;
+    try {
+      const resp = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}?localization=false&tickers=false&community_data=false&developer_data=false&sparkline=true`,
+        { headers: { Accept: "application/json" } },
+      );
+      if (resp.ok) {
+        const data = (await resp.json()) as Record<string, unknown>;
+        results.push({
+          id,
+          symbol: (data.symbol as string) ?? "",
+          name: (data.name as string) ?? "",
+          image: ((data.image as Record<string, string>)?.large ?? null) as string | null,
+          current_price: ((data.market_data as Record<string, unknown>)?.current_price as Record<string, number>)?.usd ?? null,
+          market_cap: ((data.market_data as Record<string, unknown>)?.market_cap as Record<string, number>)?.usd ?? null,
+          total_volume: ((data.market_data as Record<string, unknown>)?.total_volume as Record<string, number>)?.usd ?? null,
+          circulating_supply: (data.market_data as Record<string, unknown>)?.circulating_supply as number | null ?? null,
+          price_change_percentage_30d_in_currency: null,
+          sparkline_in_7d: null,
+        });
+      }
+    } catch {
+      // Individual coin fetch failed — skip; coin will show null data
+    }
+    if (i < ids.length - 1) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  return results;
 }
 
 interface UtopiaNodeCountCache {
