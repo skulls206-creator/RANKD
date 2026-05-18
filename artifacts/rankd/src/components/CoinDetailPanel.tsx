@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-client-react";
 import { formatPrice, formatMoney, formatPercent, formatRelativeTime } from "@/lib/format";
 import { CoinLogo } from "./CoinLogo";
+import { CrpHistoryChart } from "./CrpHistoryChart";
 import {
   Activity, Shield, ExternalLink, Globe, Github, Award,
   TrendingUp, TrendingDown, Cpu, Percent, Tag, Radio,
@@ -220,6 +221,8 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           </div>
         )}
       </div>
+
+      {coin.id === "crp-crypton" && <CrpHistoryChart />}
 
       {(coin.softwareVersion || coin.lastReleasedAt || coin.activeNodes != null) && (
         <div className="flex flex-col gap-2">

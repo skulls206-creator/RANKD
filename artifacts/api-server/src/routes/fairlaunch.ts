@@ -796,6 +796,87 @@ router.get(
   },
 );
 
+interface UtopiaBlockHistoryCache {
+  blocks: Array<{
+    block: number;
+    miningThreads: number;
+    blockReward: number;
+    crpSupply: number;
+    timestamp: string;
+    apr: number;
+  }>;
+  fetchedAt: Date;
+}
+
+let blockHistoryCache: UtopiaBlockHistoryCache | null = null;
+const BLOCK_HISTORY_TTL_MS = 10 * 60_000;
+
+async function fetchUtopiaBlockHistory(): Promise<UtopiaBlockHistoryCache["blocks"]> {
+  const allBlocks: UtopiaBlockHistoryCache["blocks"] = [];
+
+  // Fetch up to 500 blocks (max the API returns) from the current tip
+  try {
+    const resp = await fetchWithTimeout(
+      "https://utopian.is/api/explorer/blocks/get?fromBlockId=0&toBlockId=0&limit=500",
+      { headers: { Accept: "application/json" } },
+      15_000,
+    );
+    if (!resp.ok) {
+      console.warn(`[utopia-block-history] returned HTTP ${resp.status}`);
+      return [];
+    }
+    const data = (await resp.json()) as Array<Record<string, unknown>>;
+    if (!Array.isArray(data)) return [];
+
+    for (const block of data) {
+      const blockNum = block["block"] != null ? parseInt(String(block["block"]), 10) : null;
+      const threadsStr = block["miningThreads"];
+      const threads = threadsStr != null ? parseInt(String(threadsStr), 10) : null;
+      const rewardStr = block["BlockReward"];
+      const reward = rewardStr != null ? parseFloat(String(rewardStr)) : null;
+      const supplyStr = block["CRPSupply"];
+      const supply = supplyStr != null ? parseFloat(String(supplyStr)) : null;
+      const timestamp = (block["created_at"] as string) ?? "";
+
+      if (blockNum == null || threads == null || reward == null) continue;
+
+      const apr = computeCrpApr({ nodeCount: threads, blockReward: reward, fetchedAt: new Date() });
+
+      allBlocks.push({
+        block: blockNum,
+        miningThreads: threads,
+        blockReward: reward,
+        crpSupply: supply ?? 0,
+        timestamp,
+        apr: apr ?? 0,
+      });
+    }
+
+    allBlocks.sort((a, b) => a.block - b.block);
+    return allBlocks;
+  } catch (err) {
+    console.warn("[utopia-block-history] fetch failed:", (err as Error).message);
+    return [];
+  }
+}
+
+async function getBlockHistory(): Promise<UtopiaBlockHistoryCache["blocks"]> {
+  if (blockHistoryCache && Date.now() - blockHistoryCache.fetchedAt.getTime() < BLOCK_HISTORY_TTL_MS) {
+    return blockHistoryCache.blocks;
+  }
+  const blocks = await fetchUtopiaBlockHistory();
+  blockHistoryCache = { blocks, fetchedAt: new Date() };
+  return blocks;
+}
+
+router.get(
+  "/fairlaunch/crp/history",
+  async (_req, res): Promise<void> => {
+    const blocks = await getBlockHistory();
+    res.json({ blocks, count: blocks.length });
+  },
+);
+
 router.get(
   "/fairlaunch/stats",
   async (_req, res): Promise<void> => {
