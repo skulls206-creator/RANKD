@@ -346,10 +346,6 @@ function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
   // Note: this is the return on the *minimum* 64 CRP stake. A staker with
   // more CRP locked earns the same absolute reward, so their effective APR
   // is proportionally lower (e.g. 640 CRP staked → 5,256% ÷ 10 = 525.6%).
-  //
-  // The blockReward param from the explorer is checked against CRP_REWARD_PER_BLOCK;
-  // use the explorer value if present (it reflects live network conditions).
-  const effectiveReward = blockReward != null && blockReward > 0 ? blockReward : CRP_REWARD_PER_BLOCK;
   const totalAnnualYield = CRP_BLOCKS_PER_YEAR * effectiveReward;
   const yieldPerStaker = totalAnnualYield / nodeCount;
   const apr = (yieldPerStaker / CRP_MIN_STAKE) * 100;
