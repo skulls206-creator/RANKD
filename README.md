@@ -29,7 +29,7 @@ RANKD is three pieces that talk to each other across the internet:
 
 - **Frontend** (`artifacts/rankd`) — React + Vite app, builds to static files, hosted on GitHub Pages
 - **API server** (`artifacts/api-server`) — Express + TypeScript, hosted on Replit. Fetches CoinPaprika prices, GitHub release info, and the live Crypton (CRP) node count via the VPS relay. Aggressively cached so the public-facing endpoint responds in ~0.5 s.
-- **Utopia relay** (`relay.py`) — Lightweight Python stdlib relay that runs on the user's VPS and forwards requests to the local Utopia node's UAM API. **This file is intentionally not in the repo** (gitignored) to avoid making relay internals public.
+- **Utopia relay** (`relay.py`) — Lightweight Python stdlib relay that runs on the user's VPS and forwards requests to an upstream UAM endpoint. **This file is intentionally not in the repo** (gitignored) to avoid making relay internals public.
 
 ## Monorepo layout
 
@@ -103,7 +103,7 @@ After the push:
 
 Already deployed via Replit's deployment system. On the deployment, set:
 - `CORS_ALLOWED_ORIGINS` = `https://rankd.khurk.xyz` (comma-separated if more origins ever need to be added)
-- `UTOPIA_VPS_URL`, `UTOPIA_RELAY_TOKEN`, `UTOPIA_API_TOKEN`, `UTOPIA_PUBLIC_KEY` — for the Crypton node-count relay
+- `UTOPIA_VPS_URL`, `UTOPIA_RELAY_TOKEN`, `UTOPIA_API_TOKEN` — for the Crypton node-count relay
 - All other secrets currently configured in the Replit dev workspace
 
 ## Configuration reference
@@ -124,9 +124,14 @@ Already deployed via Replit's deployment system. On the deployment, set:
 | `UTOPIA_RELAY_TOKEN` | Shared secret sent as `X-Relay-Token` |
 | `UTOPIA_API_TOKEN` | Optional Utopia UAM API token |
 
+### VPS environment
+| Variable | Purpose |
+|---|---|
+| `UAM_UPSTREAM_URL` | Upstream UAM endpoint URL used by the VPS relay |
+
 ## The Utopia relay (`relay.py`)
 
-A small Python stdlib HTTP relay that runs on your VPS and forwards JSON-RPC calls to the Utopia node's local API on `127.0.0.1:22824`. It is **not in this repo** to keep its internals private. To set up your own relay, contact the maintainer for the script (or write your own — the API server expects POST `/api/1.0` with `X-Relay-Token` auth and forwards the JSON body verbatim).
+A small Python stdlib HTTP relay that runs on your VPS and forwards JSON-RPC calls to a configured UAM upstream endpoint. It is **not in this repo** to keep its internals private. To set up your own relay, contact the maintainer for the script (or write your own — the API server expects POST `/api/1.0` with `X-Relay-Token` auth and forwards the JSON body verbatim).
 
 ## Conventions
 

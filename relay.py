@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Utopia UAM relay — runs on your VPS, forwards requests to the local UAM API.
+Utopia relay — runs on your VPS and forwards requests to an upstream UAM endpoint.
 
 Usage:
-    RELAY_TOKEN=<chosen-secret> python3 relay.py
+    RELAY_TOKEN=<chosen-secret> UAM_UPSTREAM_URL=<url> python3 relay.py
 
 Optional env vars:
     RELAY_PORT        Port to listen on (default: 22825)
+    UAM_UPSTREAM_URL  Upstream UAM endpoint URL (required)
     UTOPIA_API_TOKEN  Utopia API token from UAM config (omit if not required)
 """
 
@@ -19,7 +20,7 @@ import os
 RELAY_PORT = int(os.environ.get("RELAY_PORT", "22825"))
 RELAY_TOKEN = os.environ.get("RELAY_TOKEN", "")
 UTOPIA_API_TOKEN = os.environ.get("UTOPIA_API_TOKEN", "")
-UTOPIA_LOCAL_URL = "http://localhost:22824/api/1.0"
+UAM_UPSTREAM_URL = os.environ.get("UAM_UPSTREAM_URL", "").rstrip("/")
 
 
 class RelayHandler(http.server.BaseHTTPRequestHandler):
@@ -38,6 +39,9 @@ class RelayHandler(http.server.BaseHTTPRequestHandler):
         token = self.headers.get("X-Relay-Token", "")
         if not RELAY_TOKEN or token != RELAY_TOKEN:
             self.send_json(403, {"error": "forbidden"})
+            return
+        if not UAM_UPSTREAM_URL:
+            self.send_json(500, {"error": "missing upstream", "message": "Set UAM_UPSTREAM_URL on the VPS"})
             return
 
         try:
@@ -58,7 +62,7 @@ class RelayHandler(http.server.BaseHTTPRequestHandler):
                 headers["X-Auth-Token"] = UTOPIA_API_TOKEN
 
             req = urllib.request.Request(
-                UTOPIA_LOCAL_URL,
+                UAM_UPSTREAM_URL,
                 data=req_body,
                 headers=headers,
                 method="POST",
@@ -84,12 +88,14 @@ class RelayHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(raw)
 
     def do_GET(self):
-        self.send_json(200, {"status": "utopia-relay running"})
+        self.send_json(200, {"status": "utopia-relay running", "upstreamConfigured": bool(UAM_UPSTREAM_URL)})
 
 
 if __name__ == "__main__":
     if not RELAY_TOKEN:
         print("[relay] WARNING: RELAY_TOKEN is not set — all requests will be rejected (403)")
+    if not UAM_UPSTREAM_URL:
+        print("[relay] WARNING: UAM_UPSTREAM_URL is not set — POST requests will return 500")
     server = http.server.ThreadingHTTPServer(("0.0.0.0", RELAY_PORT), RelayHandler)
     print(f"[relay] Listening on 0.0.0.0:{RELAY_PORT}")
     server.serve_forever()
