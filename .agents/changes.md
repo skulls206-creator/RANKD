@@ -25,6 +25,28 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-18 17:54 UTC — nebula-agent
+**What**: Live APR computation for CRP — pulls block reward + node count from Utopia relay, computes dynamic staking yield
+**Why**: User asked about CRP APR — the Replit talk notes mentioned this infrastructure was "partially built" and missing the computation
+**Files**:
+  - `artifacts/api-server/src/routes/fairlaunch.ts` — major refactor of Utopia data fetcher:
+    - `UtopiaNodeCountCache` → `UtopiaNetworkData` (nodeCount + blockReward)
+    - `fetchUtopiaNetworkData()` fetches both in parallel (was sequential fallback)
+    - `computeCrpApr()`: (blocks_per_year × reward_per_block ÷ active_nodes) ÷ max_supply × 100
+    - `NormalizedMarketData.stakingApr` field added
+    - `fetchCoinPaprikaData` calls `fetchUtopiaNetworkData()` + `computeCrpApr()` for CRP
+    - `buildCoinResponse` uses live `stakingApr` when available, falls back to hardcoded `meta.stakingApy`
+  - `artifacts/api-server/package.json` — added typescript dep for build
+  - `.agents/aar.md` → `.agents/changes.md` (rename in previous commit)
+**Build/Deploy**: pushed `9915d55` to main → GH Actions will rebuild + redeploy
+**Verified**: `tsc --noEmit` shows only pre-existing errors (admin.ts type issues, stale dist). New code compiles clean.
+**Next agent needs to know**:
+  - CRP monetary constants in `fairlaunch.ts:294-299`: `CRP_BLOCKS_PER_YEAR = 525600`, `CRP_REWARD_PER_BLOCK = 64`, `CRP_MAX_SUPPLY = 64000000`
+  - APR computation formula at line ~313: `annualEmission / nodeCount / max_supply * 100`
+  - If the relay returns `blockReward` in the top-level `getMiningInfo` response, it's used directly; otherwise parsed from latest block via `getMiningBlocksWithTreasury`
+  - The frontend already renders `stakingApy` with % suffix and `activeNodes` with locale-formatted count — no UI changes needed for CRP to show live data
+**Open questions**: (none)
+
 ### 2026-05-14 21:55 UTC — nebula-agent
 **What**: Refactored monolith Home.tsx + 5 housekeeping tasks (chart warmup, tests, DB cleanup, CoinGecko resilience, mockup-sandbox sync)
 **Why**: User requested 6 improvements before working with another builder
