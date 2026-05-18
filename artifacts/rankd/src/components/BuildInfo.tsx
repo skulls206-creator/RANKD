@@ -9,7 +9,7 @@ export function BuildInfo() {
   const shortDate = date.split(" ")[0] ?? date.slice(0, 10);
 
   return (
-    <p className="text-[10px] text-muted-foreground/40 font-mono select-none">
+    <p className="text-[10px] text-muted-foreground/40 font-mono">
       build <span className="text-muted-foreground/60">{hash}</span>
       {" · "}
       <time dateTime={date}>{shortDate}</time>
