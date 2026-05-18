@@ -313,9 +313,8 @@ const UTOPIA_NODE_TTL_MS = 5 * 60_000;
 function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
   const { nodeCount, blockReward } = networkData ?? { nodeCount: null, blockReward: null };
   if (nodeCount == null || nodeCount <= 0) return null;
-  // Use relay-provided reward if available, otherwise fall back to the known constant.
-  // The file-fallback exists because the relay may not expose blockReward directly
-  // (depends on UAM version and relay.py implementation).
+  // Use explorer-provided reward if available, otherwise fall back to the known constant.
+  // The file-fallback exists because the explorer API may be down or rate-limited.
   const effectiveReward = (blockReward != null && blockReward > 0) ? blockReward : CRP_REWARD_PER_BLOCK;
   // Per-staker APR: each block rewards ~48 CRP shared across all active nodes.
   // Blocks arrive every ~15 min (semi-random, max 96/day).
@@ -333,8 +332,8 @@ function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
   // more CRP locked earns the same absolute reward, so their effective APR
   // is proportionally lower (e.g. 640 CRP staked → 5,256% ÷ 10 = 525.6%).
   //
-  // The blockReward param from the relay is checked against CRP_REWARD_PER_BLOCK;
-  // use the relay value if present (it reflects live network conditions).
+  // The blockReward param from the explorer is checked against CRP_REWARD_PER_BLOCK;
+  // use the explorer value if present (it reflects live network conditions).
   const effectiveReward = blockReward != null && blockReward > 0 ? blockReward : CRP_REWARD_PER_BLOCK;
   const totalAnnualYield = CRP_BLOCKS_PER_YEAR * effectiveReward;
   const yieldPerStaker = totalAnnualYield / nodeCount;
@@ -343,8 +342,14 @@ function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
 }
 
 /**
- * Fetch Utopia network data (node count + block reward) from the VPS relay.
- * Cached for 5 minutes. Returns null if the relay is unavailable.
+ * Fetch Utopia network data (node count + block reward) from the public
+ * Utopia P2P Explorer API. No VPS relay needed.
+ * Cached for 5 minutes. Returns null if unavailable.
+ *
+ * The explorer returns blocks with confirmed fields:
+ *   miningThreads — active node count (string, e.g. "2676")
+ *   BlockReward — per-block emission (string, e.g. "47.999998044")
+ *   CRPSupply — circulating supply (string)
  */
 async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
   const cached = utopiaNetworkCache.entry;
@@ -352,121 +357,47 @@ async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
     return cached;
   }
 
-  const vpsUrl = process.env["UTOPIA_VPS_URL"];
-  const relayToken = process.env["UTOPIA_RELAY_TOKEN"];
-  if (!vpsUrl || !relayToken) return null;
-
   const store = (data: UtopiaNetworkData) => {
     utopiaNetworkCache.entry = data;
     return data;
   };
   const emptyStore = () => store({ nodeCount: null, blockReward: null, fetchedAt: new Date() });
 
-  const relayUrl = `${vpsUrl.replace(/\/+$/, "")}/api/1.0`;
-
   try {
-    // Fetch both mining info and latest block data in parallel
-    const [miningResp, blockResp] = await Promise.all([
-      fetchWithTimeout(
-        relayUrl,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Relay-Token": relayToken },
-          body: JSON.stringify({ method: "getMiningInfo" }),
-        },
-        8_000,
-      ),
-      fetchWithTimeout(
-        relayUrl,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Relay-Token": relayToken },
-          body: JSON.stringify({ method: "getMiningBlocksWithTreasury", params: { fromBlockId: 0, toBlockId: 0, limit: 3 } }),
-        },
-        8_000,
-      ),
-    ]);
-
-    let nodeCount: number | null = null;
-    let blockReward: number | null = null;
-
-    // Parse mining info for node count and reward
-    if (miningResp.ok) {
-      const data = (await miningResp.json()) as Record<string, unknown>;
-      const threads = data["miningThreads"] ?? data["activeNodes"] ?? data["nodesCount"];
-      if (threads != null) {
-        const n = parseInt(String(threads), 10);
-        if (!isNaN(n)) nodeCount = n;
-      }
-      // Some relay responses include blockReward at the top level
-      const reward = data["blockReward"] ?? data["miningReward"] ?? data["blockRewardCoins"];
-      if (reward != null) {
-        const r = parseFloat(String(reward));
-        if (!isNaN(r)) blockReward = r;
-      }
-    } else {
-      console.warn(`[utopia-relay] getMiningInfo returned HTTP ${miningResp.status}`);
+    const resp = await fetchWithTimeout(
+      "https://utopian.is/api/explorer/blocks/get?fromBlockId=0&toBlockId=0&limit=1",
+      { headers: { Accept: "application/json" } },
+      10_000,
+    );
+    if (!resp.ok) {
+      console.warn(`[utopia-explorer] returned HTTP ${resp.status}`);
+      return emptyStore();
     }
 
-    // Parse latest blocks for fallback node count + reward data
-    if (blockResp.ok) {
-      const blockData = (await blockResp.json()) as unknown;
-      const blocks = Array.isArray(blockData) ? blockData : (blockData as Record<string, unknown>)["blocks"];
-      if (Array.isArray(blocks) && blocks.length > 0) {
-        // Use the most recent block for reward info
-        for (const block of blocks) {
-          const blk = block as Record<string, unknown>;
-          if (nodeCount == null) {
-            const threads = blk["miningThreads"];
-            if (threads != null) {
-              const n = parseInt(String(threads), 10);
-              if (!isNaN(n)) nodeCount = n;
-            }
-          }
-          if (blockReward == null) {
-            const reward =
-              blk["miningReward"] ??
-              blk["blockReward"] ??
-              blk["treasuryReward"] ??
-              // Some explorers report total miner payout
-              (blk["totalReward"] as number) ??
-              null;
-            if (reward != null) {
-              const r = parseFloat(String(reward));
-              if (!isNaN(r)) blockReward = r;
-            }
-          }
-        }
-      }
-    } else {
-      console.warn(`[utopia-relay] getMiningBlocksWithTreasury returned HTTP ${blockResp.status}`);
+    const data = (await resp.json()) as Array<Record<string, unknown>> | Record<string, unknown>;
+    const blocks = Array.isArray(data) ? data : (data["blocks"] as Array<Record<string, unknown>>) ?? [];
+    if (!Array.isArray(blocks) || blocks.length === 0) {
+      console.warn("[utopia-explorer] no blocks returned");
+      return emptyStore();
     }
 
-    if (nodeCount == null && blockReward == null) {
+    const block = blocks[0] as Record<string, unknown>;
+    const threadsRaw = block["miningThreads"];
+    const rewardRaw = block["BlockReward"];
+
+    const nodeCount = threadsRaw != null ? parseInt(String(threadsRaw), 10) : null;
+    const blockReward = rewardRaw != null ? parseFloat(String(rewardRaw)) : null;
+
+    if (nodeCount == null || isNaN(nodeCount) || blockReward == null || isNaN(blockReward)) {
+      console.warn("[utopia-explorer] missing miningThreads or BlockReward in block", block);
       return emptyStore();
     }
 
     return store({ nodeCount, blockReward, fetchedAt: new Date() });
   } catch (err) {
-    console.warn("[utopia-relay] fetch failed:", (err as Error).message);
+    console.warn("[utopia-explorer] fetch failed:", (err as Error).message);
     return emptyStore();
   }
-}
-
-function getUtopiaRelayHealth(): { configured: boolean; relayUrl: string | null } {
-  const vpsUrl = process.env["UTOPIA_VPS_URL"];
-  const relayToken = process.env["UTOPIA_RELAY_TOKEN"];
-  if (!vpsUrl || !relayToken) {
-    return { configured: false, relayUrl: null };
-  }
-  return {
-    configured: true,
-    relayUrl: `${vpsUrl.replace(/\/+$/, "")}/api/1.0`,
-  };
-}
-
-function getUtopiaRelayUrl(): string | null {
-  return getUtopiaRelayHealth().relayUrl;
 }
 
 /** Legacy wrapper — returns just the node count */
