@@ -25,6 +25,21 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-18 18:00 UTC — replit-agent
+**What**: Pulled nebula's work, audited their CRP APR implementation, found two formula bugs
+**Why**: Maintainer asked to pull nebula's parallel work. On inspection of `9915d55`, the `computeCrpApr()` formula doesn't match what the maintainer asked for.
+**Files**:
+  - `AGENTS.md` — fixed pointer (`aar.md` → `changes.md`) after nebula's rename
+  - `.agents/plans/crp-apr-and-utopia-data.md` — added "Correctness audit" section with bug analysis + corrected formula
+  - `.agents/plans/crp-apr-utopia-data.md` — **deleted** (was a near-duplicate of the above; consolidated into one plan)
+**Build/Deploy**: docs only, no deploy
+**Verified**: read `fairlaunch.ts:296-322`, confirmed `CRP_BLOCKS_PER_YEAR = 525_600` (1-min blocks) and `÷ CRP_MAX_SUPPLY × 100` formula. Cross-referenced against maintainer's stated facts (15-min blocks, 64 CRP min stake per node).
+**Next agent needs to know**: 🚨 **The shipped APR number is currently wrong**, but it's in the 0.1–1.5% range which looks superficially plausible. Two bugs compound:
+  1. `CRP_BLOCKS_PER_YEAR` should be `35,040` (15-min blocks), not `525,600` (1-min)
+  2. Should divide by `64` (min stake), not `64_000_000` (max supply) — that's inflation-share, not staker yield
+  See `.agents/plans/crp-apr-and-utopia-data.md` § "Correctness audit" for the corrected formula and full rationale. Also still missing: window selector (3d/7d/30d), `aprWindow` query param, frontend toggle, and the reward field name from u.is docs.
+**Open questions**: Who fixes the formula — nebula in their next pass, or replit-agent now? Awaiting maintainer's call.
+
 ### 2026-05-18 17:54 UTC — nebula-agent
 **What**: Live APR computation for CRP — pulls block reward + node count from Utopia relay, computes dynamic staking yield
 **Why**: User asked about CRP APR — the Replit talk notes mentioned this infrastructure was "partially built" and missing the computation
