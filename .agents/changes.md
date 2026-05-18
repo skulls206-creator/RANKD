@@ -45,7 +45,9 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
   - APR computation formula at line ~313: `annualEmission / nodeCount / max_supply * 100`
   - If the relay returns `blockReward` in the top-level `getMiningInfo` response, it's used directly; otherwise parsed from latest block via `getMiningBlocksWithTreasury`
   - The frontend already renders `stakingApy` with % suffix and `activeNodes` with locale-formatted count — no UI changes needed for CRP to show live data
-**Open questions**: (none)
+**Open questions**:
+  - ⚠️ **Replit flagged**: The reward field name in the Utopia relay response is guessed, not confirmed against docs. See `.agents/plans/crp-apr-utopia-data.md` — nebula.gg should read u.is API docs and paste the exact field name before touching APR code.
+  - The block reward constant (64 CRP/block) needs confirmation from explorer / latest chain data
 
 ### 2026-05-14 21:55 UTC — nebula-agent
 **What**: Refactored monolith Home.tsx + 5 housekeeping tasks (chart warmup, tests, DB cleanup, CoinGecko resilience, mockup-sandbox sync)
