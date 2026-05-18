@@ -209,7 +209,7 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
         {coin.stakingApy != null && (
           <div className="col-span-2 bg-amber-950/20 rounded-lg border border-primary/30 p-3">
             <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1 flex items-center gap-1">
-              <Percent className="w-3 h-3" /> Staking Yield
+              <Percent className="w-3 h-3" /> Yield
             </div>
             <div className="flex items-center justify-between">
               <div className="text-lg font-mono font-bold text-primary">{coin.stakingApy}% APY</div>
