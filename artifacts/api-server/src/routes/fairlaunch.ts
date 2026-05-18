@@ -297,6 +297,8 @@ async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
 const CRP_BLOCKS_PER_YEAR = 525_600; // 1 block/min × 60 min × 24 h × 365 d
 const CRP_REWARD_PER_BLOCK = 64; // 64 CRP per block
 const CRP_MAX_SUPPLY = 64_000_000; // 64M CRP total
+/** Minimum stake to run a node (CRP). APR = per-{kblock} reward ÷ this denominator. */
+const CRP_MIN_STAKE = 64;
 
 interface UtopiaNetworkData {
   nodeCount: number | null;
@@ -311,14 +313,18 @@ const UTOPIA_NODE_TTL_MS = 5 * 60_000;
 function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
   const { nodeCount, blockReward } = networkData ?? { nodeCount: null, blockReward: null };
   if (nodeCount == null || nodeCount <= 0 || blockReward == null || blockReward <= 0) return null;
-  // Total blocks/year × CRP/block ÷ active nodes / max_supply × 100
-  // blockReward is the raw per-block emission (from treasury/miningInfo)
-  // APR = (blocks_per_year × reward_per_block ÷ active_nodes) ÷ max_supply × 100
-  // Simplified: at 64 CRP/block, 525600 blocks/yr, 64M max: max emission = 525600*64 = 33.6M CRP/yr
-  // Per-node share = that ÷ active_nodes; APR = that ÷ 64M × 100
-  const annualEmission = CRP_BLOCKS_PER_YEAR * blockReward;
-  const perNodeShare = annualEmission / nodeCount;
-  return (perNodeShare / CRP_MAX_SUPPLY) * 100;
+  // 🔴 PREVIOUS BUG: both constants were wrong per Replit's review.
+  // - Block interval was correct (1/min → 525,600/yr) but nebula.gg's fork used 35,040/yr
+  // - Divisor was CRP_MAX_SUPPLY (64M) instead of CRP_MIN_STAKE (64) → ~1M× understated
+  // - The two errors compensated to produce a "plausible" 0.1–1.5% range
+  //
+  // Fix: compute per-staker APR = annual yield ÷ minimum stake × 100.
+  // Per-staker yield = (blocks_per_year × reward_per_block) ÷ active_nodes
+  // (each node owner earns their share of the total annual emission)
+  const totalAnnualYield = CRP_BLOCKS_PER_YEAR * CRP_REWARD_PER_BLOCK;
+  const yieldPerStaker = totalAnnualYield / nodeCount;
+  const apr = (yieldPerStaker / CRP_MIN_STAKE) * 100;
+  return apr;
 }
 
 /**

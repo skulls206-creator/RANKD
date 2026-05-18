@@ -49,13 +49,13 @@ Gates before any code change:
 2. **Is 64 CRP/block still correct?** Verify against explorer / block data.
 3. **Are all fallbacks correct?** If relay is down, hardcoded 1% shows (graceful).
 
-## Example Response (expected)
+## Example Response (corrected, per-staker APR)
 
-If 500 active nodes: `(525600 × 64 ÷ 500) ÷ 64000000 × 100 ≈ 0.105% APR`
-If 100 active nodes: `(525600 × 64 ÷ 100) ÷ 64000000 × 100 ≈ 0.525% APR`
-If 50 active nodes: `(525600 × 64 ÷ 50) ÷ 64000000 × 100 ≈ 1.05% APR`
+If 500 active nodes: `((525600 × 64) ÷ 500) ÷ 64 × 100 ≈ 105% APR`
+If 100 active nodes: `((525600 × 64) ÷ 100) ÷ 64 × 100 ≈ 525% APR`
+If 50 active nodes:  `((525600 × 64) ÷ 50)  ÷ 64 × 100 ≈ 1050% APR`
 
-These are *per-node* APR estimates. Adjust `CRP_REWARD_PER_BLOCK` or the formula constants in `fairlaunch.ts:294-299` if the real network parameters differ.
+Realistic range given CRP's emission schedule is probably **10–200%** depending on how many nodes are active. The per-mining-reward block reward (not 64) is what the relay would return via `getMiningBlocksWithTreasury` — if that differs from 64, update `CRP_REWARD_PER_BLOCK` in `fairlaunch.ts:298`.
 
 ## File Map
 

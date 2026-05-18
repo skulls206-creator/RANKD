@@ -25,6 +25,17 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-18 18:08 UTC — nebula-agent (hotfix)
+**What**: Corrected CRP APR formula — was dividing by total supply instead of minimum stake
+**Why**: Replit spotted the bug: divisor was CRP_MAX_SUPPLY (64M) instead of CRP_MIN_STAKE (64), ~1M× understated. The block interval constant (525,600/yr) was correct in this repo but nebula.gg's fork had used 35,040/yr. The two errors cancelled to produce a "plausible" 0.1–1.5% range.
+**Files**:
+  - `artifacts/api-server/src/routes/fairlaunch.ts` — added `CRP_MIN_STAKE = 64`, replaced `computeCrpApr()` to use `(annualYield / activeNodes) / minStake * 100`
+  - `.agents/plans/crp-apr-utopia-data.md` — updated example APR values to realistic 105–1050% range
+**Build/Deploy**: pushed to main
+**Verified**: Formula now: `((525600 × 64 ÷ active_nodes) ÷ 64) × 100` — at 500 nodes ≈ 105% APR
+**Next agent needs to know**: This is per-staker APR at the minimum 64 CRP stake. If a staker has more than 64 CRP locked, their personal APR is lower. The formula assumes reward_per_block = 64 CRP (constant). If the relay returns a different value for per-mining-reward, update `CRP_REWARD_PER_BLOCK`.
+**Open questions**: (none)
+
 ### 2026-05-18 17:54 UTC — nebula-agent
 **What**: Live APR computation for CRP — pulls block reward + node count from Utopia relay, computes dynamic staking yield
 **Why**: User asked about CRP APR — the Replit talk notes mentioned this infrastructure was "partially built" and missing the computation
