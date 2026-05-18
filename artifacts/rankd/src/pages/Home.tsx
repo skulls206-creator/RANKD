@@ -9,7 +9,7 @@ import {
   Search, RefreshCw, TrendingUp, TrendingDown, Info,
   Award, ChevronUp, ChevronDown,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ContextMenuPortal } from "@/components/ContextMenu";
 import { CoinLogo } from "@/components/CoinLogo";
 import { CoinSparkline } from "@/components/CoinSparkline";
