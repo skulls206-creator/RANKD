@@ -294,10 +294,10 @@ async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
 }
 
 /** CRP monetary constants */
-const CRP_BLOCKS_PER_YEAR = 525_600; // 1 block/min × 60 min × 24 h × 365 d
-const CRP_REWARD_PER_BLOCK = 64; // 64 CRP per block
+const CRP_BLOCKS_PER_YEAR = 35_040; // 1 block / 15 min × 4 blocks/h × 24 h × 365 d
+const CRP_REWARD_PER_BLOCK = 48; // ~48 CRP per block (pool-shared among active nodes)
 const CRP_MAX_SUPPLY = 64_000_000; // 64M CRP total
-/** Minimum stake to run a node (CRP). APR = per-{kblock} reward ÷ this denominator. */
+/** Minimum stake to run a node (CRP). APR = per-staker annual yield ÷ this denominator. */
 const CRP_MIN_STAKE = 64;
 
 interface UtopiaNetworkData {
@@ -312,19 +312,34 @@ const UTOPIA_NODE_TTL_MS = 5 * 60_000;
 
 function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
   const { nodeCount, blockReward } = networkData ?? { nodeCount: null, blockReward: null };
-  if (nodeCount == null || nodeCount <= 0 || blockReward == null || blockReward <= 0) return null;
-  // 🔴 PREVIOUS BUG: both constants were wrong per Replit's review.
-  // - Block interval was correct (1/min → 525,600/yr) but nebula.gg's fork used 35,040/yr
-  // - Divisor was CRP_MAX_SUPPLY (64M) instead of CRP_MIN_STAKE (64) → ~1M× understated
-  // - The two errors compensated to produce a "plausible" 0.1–1.5% range
+  if (nodeCount == null || nodeCount <= 0) return null;
+  // Use relay-provided reward if available, otherwise fall back to the known constant.
+  // The file-fallback exists because the relay may not expose blockReward directly
+  // (depends on UAM version and relay.py implementation).
+  const effectiveReward = (blockReward != null && blockReward > 0) ? blockReward : CRP_REWARD_PER_BLOCK;
+  // Per-staker APR: each block rewards ~48 CRP shared across all active nodes.
+  // Blocks arrive every ~15 min (semi-random, max 96/day).
   //
-  // Fix: compute per-staker APR = annual yield ÷ minimum stake × 100.
-  // Per-staker yield = (blocks_per_year × reward_per_block) ÷ active_nodes
-  // (each node owner earns their share of the total annual emission)
-  const totalAnnualYield = CRP_BLOCKS_PER_YEAR * CRP_REWARD_PER_BLOCK;
+  // Per-staker yield = (blocks/yr × reward/block) ÷ active_nodes → CRP earned
+  // per staker per year.
+  //
+  // APR = (per-staker yield ÷ min stake) × 100
+  //
+  // Example at 500 nodes:
+  //   yield_per_staker = (35,040 × 48) ÷ 500 = 3,363.84 CRP/yr
+  //   APR = (3,363.84 ÷ 64) × 100 ≈ 5,256%
+  //
+  // Note: this is the return on the *minimum* 64 CRP stake. A staker with
+  // more CRP locked earns the same absolute reward, so their effective APR
+  // is proportionally lower (e.g. 640 CRP staked → 5,256% ÷ 10 = 525.6%).
+  //
+  // The blockReward param from the relay is checked against CRP_REWARD_PER_BLOCK;
+  // use the relay value if present (it reflects live network conditions).
+  const effectiveReward = blockReward != null && blockReward > 0 ? blockReward : CRP_REWARD_PER_BLOCK;
+  const totalAnnualYield = CRP_BLOCKS_PER_YEAR * effectiveReward;
   const yieldPerStaker = totalAnnualYield / nodeCount;
   const apr = (yieldPerStaker / CRP_MIN_STAKE) * 100;
-  return apr;
+  return Math.round(apr * 100) / 100; // round to 2 decimal places
 }
 
 /**

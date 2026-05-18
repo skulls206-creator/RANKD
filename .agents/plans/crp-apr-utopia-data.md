@@ -51,11 +51,25 @@ Gates before any code change:
 
 ## Example Response (corrected, per-staker APR)
 
-If 500 active nodes: `((525600 × 64) ÷ 500) ÷ 64 × 100 ≈ 105% APR`
-If 100 active nodes: `((525600 × 64) ÷ 100) ÷ 64 × 100 ≈ 525% APR`
-If 50 active nodes:  `((525600 × 64) ÷ 50)  ÷ 64 × 100 ≈ 1050% APR`
+**Constants confirmed with maintainer (2026-05-18):**
+- Block interval: **15 min** → 35,040 blocks/yr (not 1 min / 525,600)
+- Block reward: **~48 CRP** pool-shared (not 64)
+- Min stake: **64 CRP**
 
-Realistic range given CRP's emission schedule is probably **10–200%** depending on how many nodes are active. The per-mining-reward block reward (not 64) is what the relay would return via `getMiningBlocksWithTreasury` — if that differs from 64, update `CRP_REWARD_PER_BLOCK` in `fairlaunch.ts:298`.
+If 500 nodes: `((35,040 × 48) ÷ 500) ÷ 64 × 100 ≈ 5,256% APR`
+If 300 nodes: `((35,040 × 48) ÷ 300) ÷ 64 × 100 ≈ 8,760% APR`
+If 100 nodes: `((35,040 × 48) ÷ 100) ÷ 64 × 100 ≈ 26,280% APR`
+
+These are returns on the **minimum 64 CRP stake**. A staker with 640 CRP locked earns same absolute reward → APR is 1/10th. This dilutes heavily with larger stakes. At ~500 nodes and typical stake sizes the displayed APR will be high but that's accurate for the minimum commit.
+
+The relay response `blockReward` field overrides `CRP_REWARD_PER_BLOCK` if present.
+
+## Remaining VPS Work
+
+- [ ] Hit VPS relay with both `getMiningInfo` and `getMiningBlocksWithTreasury` calls
+- [ ] Confirm the `miningThreads` / node count field parses
+- [ ] Confirm whether relay returns a `blockReward` or per-block reward field
+- [ ] If the relay field differs from 48, update `CRP_REWARD_PER_BLOCK` default
 
 ## File Map
 
