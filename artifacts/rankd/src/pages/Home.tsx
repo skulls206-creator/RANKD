@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import {
   Search, RefreshCw, TrendingUp, TrendingDown, Info,
-  Award, ChevronUp, ChevronDown,
+  Award, ChevronUp, ChevronDown, Trophy,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ContextMenuPortal } from "@/components/ContextMenu";
@@ -178,9 +178,15 @@ export default function Home() {
                 sub="By market cap"
               />
               <StatCard
-                label="Crypton Rank"
-                value={stats.cryptonRank ? `#${stats.cryptonRank}` : "Unranked"}
-                sub="CRP among fair peers"
+                label="Top Yield"
+                value={
+                  (() => {
+                    const crp = coinsData?.coins?.find((c: any) => c.id === "crp-crypton");
+                    if (crp?.stakingApy != null) return `${crp.stakingApy}%`;
+                    return "—";
+                  })()
+                }
+                sub="🏆 Crypton (CRP) — King of fair launches"
               />
             </>
           ) : null}
