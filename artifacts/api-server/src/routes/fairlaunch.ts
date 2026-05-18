@@ -138,6 +138,8 @@ interface NormalizedMarketData {
   change30d: number | null;
   imageUrl: string | null;
   activeNodes?: number | null;
+  /** Live-computed staking APR (e.g. CRP from Utopia network data) */
+  stakingApr?: number | null;
 }
 
 interface CacheEntry {
@@ -291,78 +293,153 @@ async function fetchCoinGeckoData(): Promise<CoinGeckoMarketData[]> {
   return results;
 }
 
-interface UtopiaNodeCountCache {
-  count: number | null;
+/** CRP monetary constants */
+const CRP_BLOCKS_PER_YEAR = 525_600; // 1 block/min × 60 min × 24 h × 365 d
+const CRP_REWARD_PER_BLOCK = 64; // 64 CRP per block
+const CRP_MAX_SUPPLY = 64_000_000; // 64M CRP total
+
+interface UtopiaNetworkData {
+  nodeCount: number | null;
+  /** Raw block reward (CRP per block) as seen on the latest block */
+  blockReward: number | null;
   fetchedAt: Date;
 }
 
-const utopiaNodeCountCache: { entry: UtopiaNodeCountCache | null } = { entry: null };
+let utopiaNetworkCache: { entry: UtopiaNetworkData | null } = { entry: null };
 const UTOPIA_NODE_TTL_MS = 5 * 60_000;
 
-async function fetchUtopiaNodeCount(): Promise<number | null> {
-  const cached = utopiaNodeCountCache.entry;
+function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
+  const { nodeCount, blockReward } = networkData ?? { nodeCount: null, blockReward: null };
+  if (nodeCount == null || nodeCount <= 0 || blockReward == null || blockReward <= 0) return null;
+  // Total blocks/year × CRP/block ÷ active nodes / max_supply × 100
+  // blockReward is the raw per-block emission (from treasury/miningInfo)
+  // APR = (blocks_per_year × reward_per_block ÷ active_nodes) ÷ max_supply × 100
+  // Simplified: at 64 CRP/block, 525600 blocks/yr, 64M max: max emission = 525600*64 = 33.6M CRP/yr
+  // Per-node share = that ÷ active_nodes; APR = that ÷ 64M × 100
+  const annualEmission = CRP_BLOCKS_PER_YEAR * blockReward;
+  const perNodeShare = annualEmission / nodeCount;
+  return (perNodeShare / CRP_MAX_SUPPLY) * 100;
+}
+
+/**
+ * Fetch Utopia network data (node count + block reward) from the VPS relay.
+ * Cached for 5 minutes. Returns null if the relay is unavailable.
+ */
+async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
+  const cached = utopiaNetworkCache.entry;
   if (cached && Date.now() - cached.fetchedAt.getTime() < UTOPIA_NODE_TTL_MS) {
-    return cached.count;
+    return cached;
   }
 
   const vpsUrl = process.env["UTOPIA_VPS_URL"];
   const relayToken = process.env["UTOPIA_RELAY_TOKEN"];
   if (!vpsUrl || !relayToken) return null;
 
-  const store = (count: number | null) => {
-    utopiaNodeCountCache.entry = { count, fetchedAt: new Date() };
-    return count;
+  const store = (data: UtopiaNetworkData) => {
+    utopiaNetworkCache.entry = data;
+    return data;
   };
+  const emptyStore = () => store({ nodeCount: null, blockReward: null, fetchedAt: new Date() });
 
   try {
-    const resp = await fetchWithTimeout(
-      `${vpsUrl}/api/1.0`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
-        body: JSON.stringify({ method: "getMiningInfo" }),
-      },
-      8_000,
-    );
-    if (!resp.ok) {
-      console.warn(`[utopia-relay] getMiningInfo returned HTTP ${resp.status}`);
-      return store(null);
-    }
-    const data = (await resp.json()) as Record<string, unknown>;
-    const miningThreads = data["miningThreads"] ?? data["activeNodes"] ?? data["nodesCount"];
-    if (miningThreads != null) {
-      const count = parseInt(String(miningThreads), 10);
-      if (!isNaN(count)) return store(count);
+    // Fetch both mining info and latest block data in parallel
+    const [miningResp, blockResp] = await Promise.all([
+      fetchWithTimeout(
+        `${vpsUrl}/api/1.0`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
+          body: JSON.stringify({ method: "getMiningInfo" }),
+        },
+        8_000,
+      ),
+      fetchWithTimeout(
+        `${vpsUrl}/api/1.0`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
+          body: JSON.stringify({ method: "getMiningBlocksWithTreasury", params: { fromBlockId: 0, toBlockId: 0, limit: 3 } }),
+        },
+        8_000,
+      ),
+    ]);
+
+    let nodeCount: number | null = null;
+    let blockReward: number | null = null;
+
+    // Parse mining info for node count and reward
+    if (miningResp.ok) {
+      const data = (await miningResp.json()) as Record<string, unknown>;
+      const threads = data["miningThreads"] ?? data["activeNodes"] ?? data["nodesCount"];
+      if (threads != null) {
+        const n = parseInt(String(threads), 10);
+        if (!isNaN(n)) nodeCount = n;
+      }
+      // Some relay responses include blockReward at the top level
+      const reward = data["blockReward"] ?? data["miningReward"] ?? data["blockRewardCoins"];
+      if (reward != null) {
+        const r = parseFloat(String(reward));
+        if (!isNaN(r)) blockReward = r;
+      }
+    } else {
+      console.warn(`[utopia-relay] getMiningInfo returned HTTP ${miningResp.status}`);
     }
 
-    // Fallback: pull miningThreads from the latest block
-    const blockResp = await fetchWithTimeout(
-      `${vpsUrl}/api/1.0`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
-        body: JSON.stringify({ method: "getMiningBlocksWithTreasury", params: { fromBlockId: 0, toBlockId: 0, limit: 1 } }),
-      },
-      8_000,
-    );
-    if (!blockResp.ok) {
-      console.warn(`[utopia-relay] getMiningBlocksWithTreasury returned HTTP ${blockResp.status}`);
-      return store(null);
-    }
-    const blockData = (await blockResp.json()) as unknown;
-    const blocks = Array.isArray(blockData) ? blockData : (blockData as Record<string, unknown>)["blocks"];
-    if (Array.isArray(blocks) && blocks.length > 0) {
-      const threads = (blocks[0] as Record<string, unknown>)["miningThreads"];
-      if (threads != null) {
-        const count = parseInt(String(threads), 10);
-        if (!isNaN(count)) return store(count);
+    // Parse latest blocks for fallback node count + reward data
+    if (blockResp.ok) {
+      const blockData = (await blockResp.json()) as unknown;
+      const blocks = Array.isArray(blockData) ? blockData : (blockData as Record<string, unknown>)["blocks"];
+      if (Array.isArray(blocks) && blocks.length > 0) {
+        // Use the most recent block for reward info
+        for (const block of blocks) {
+          const blk = block as Record<string, unknown>;
+          if (nodeCount == null) {
+            const threads = blk["miningThreads"];
+            if (threads != null) {
+              const n = parseInt(String(threads), 10);
+              if (!isNaN(n)) nodeCount = n;
+            }
+          }
+          if (blockReward == null) {
+            const reward =
+              blk["miningReward"] ??
+              blk["blockReward"] ??
+              blk["treasuryReward"] ??
+              // Some explorers report total miner payout
+              (blk["totalReward"] as number) ??
+              null;
+            if (reward != null) {
+              const r = parseFloat(String(reward));
+              if (!isNaN(r)) blockReward = r;
+            }
+          }
+        }
       }
+    } else {
+      console.warn(`[utopia-relay] getMiningBlocksWithTreasury returned HTTP ${blockResp.status}`);
     }
-    return store(null);
+
+    if (nodeCount == null && blockReward == null) {
+      return emptyStore();
+    }
+
+    return store({ nodeCount, blockReward, fetchedAt: new Date() });
   } catch (err) {
     console.warn("[utopia-relay] fetch failed:", (err as Error).message);
-    return store(null);
+    return emptyStore();
   }
+}
+
+/** Legacy wrapper — returns just the node count */
+async function fetchUtopiaNodeCount(): Promise<number | null> {
+  const data = await fetchUtopiaNetworkData();
+  return data?.nodeCount ?? null;
+}
+
+/** Returns dynamic APR for CRP, computed from live network data, or falls back to the hardcoded stakingApy */
+async function fetchCrpDynamicApr(): Promise<number | null> {
+  const networkData = await fetchUtopiaNetworkData();
+  return computeCrpApr(networkData);
 }
 
 function buildGitHubHeaders(): Record<string, string> {
@@ -461,11 +538,11 @@ async function fetchCoinPaprikaData(
 ): Promise<NormalizedMarketData | null> {
   if (!meta.coinPaprikaId) return null;
   try {
-    const [paprikaResp, utopiaNodeCount] = await Promise.all([
+    const [paprikaResp, utopiaNetworkData] = await Promise.all([
       fetch(`https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(meta.coinPaprikaId)}`, {
         headers: { Accept: "application/json" },
       }),
-      meta.utopiaExplorer ? fetchUtopiaNodeCount() : Promise.resolve(null),
+      meta.utopiaExplorer ? fetchUtopiaNetworkData() : Promise.resolve(null),
     ]);
 
     if (!paprikaResp.ok) return null;
@@ -476,6 +553,9 @@ async function fetchCoinPaprikaData(
       ? price * circulatingSupply
       : data.quotes?.USD?.market_cap ?? null;
 
+    const utopiaNodeCount = utopiaNetworkData?.nodeCount ?? null;
+    const stakingApr = utopiaNetworkData ? computeCrpApr(utopiaNetworkData) : null;
+
     return {
       id: meta.id,
       price,
@@ -485,6 +565,7 @@ async function fetchCoinPaprikaData(
       change30d: data.quotes?.USD?.percent_change_30d ?? null,
       imageUrl: meta.logoUrl ?? `https://static.coinpaprika.com/coin/${meta.coinPaprikaId}/logo.png`,
       activeNodes: utopiaNodeCount ?? null,
+      stakingApr: stakingApr ?? null,
     };
   } catch {
     return null;
@@ -558,6 +639,8 @@ function buildCoinResponse(
 ) {
   const softwareVersion = versionOverride?.softwareVersion ?? meta.softwareVersion ?? githubRelease.softwareVersion ?? null;
   const lastReleasedAt = versionOverride?.lastReleasedAt ?? meta.lastReleasedAt ?? githubRelease.lastReleasedAt ?? null;
+  // Use live-computed APR when available, fall back to hardcoded meta value
+  const stakingApy = live.stakingApr != null ? live.stakingApr : (meta.stakingApy ?? null);
   return {
     rank,
     id: meta.id,
@@ -576,7 +659,7 @@ function buildCoinResponse(
     website: meta.website ?? null,
     explorer: meta.explorer ?? null,
     github: meta.github ?? null,
-    stakingApy: meta.stakingApy ?? null,
+    stakingApy,
     yieldType: meta.yieldType ?? null,
     softwareVersion,
     lastReleasedAt,
