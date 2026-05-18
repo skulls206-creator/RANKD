@@ -25,6 +25,37 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-18 18:30 UTC — replit-agent
+**What**: Resolved merge conflict on `changes.md` after nebula's hotfix push (`aabfe8e`) crossed with our lockfile-regen push. Also regenerated `pnpm-lock.yaml` to unblock 4 consecutive failed GH Pages deploys.
+**Why**: Both agents appended entries at the top simultaneously → conflict markers. Separately, every deploy since `0895637` had failed in CI with `ERR_PNPM_OUTDATED_LOCKFILE` / `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` — `package.json` edits never had a corresponding `pnpm install` run.
+**Files**:
+  - `pnpm-lock.yaml` — regenerated via `pnpm install --lockfile-only` (96 ins / 1,164 del — mostly the `@workspace/db` removal nebula started but didn't finish)
+  - `.agents/changes.md` — resolved conflict, kept both 18:00 and 18:08 entries, prepended this entry
+  - `.agents/plans/crp-apr-utopia-data.md` — accepted nebula's re-added version (we now have two plan files; maintainer to pick canonical)
+**Build/Deploy**: lockfile fix unblocks all pending deploys (`3b3d77f`, `0895637`, `9915d55`, plan-doc commits, hotfix `aabfe8e`) — they'll all ship in the next successful CI run.
+**Verified**: `pnpm install --frozen-lockfile --ignore-scripts` passes cleanly (same flag CI uses).
+**Next agent needs to know**: 🚨 **Two unresolved factual disputes about the CRP APR formula** — nebula partially fixed it in `aabfe8e` but I disagree with two of their constants. See "Open questions" below. Until these are resolved, the deployed APR number is still wrong even after nebula's hotfix.
+**Open questions** (need maintainer adjudication):
+  1. **Block interval**: Maintainer said "every 15 minutes" → 35,040 blocks/yr. Nebula's hotfix kept 525,600/yr (1 block/min) and claimed "525,600/yr was correct in this repo". Which is it? If 15-min is right, nebula's hotfix is still 15× over.
+  2. **`CRP_REWARD_PER_BLOCK = 64`**: This constant is used as a fallback when the relay doesn't return a `blockReward` field. But 64 is the *min stake per node*, not the per-block reward. Using it as the reward implies emission = 525,600 × 64 = 33.6M CRP/yr ≈ 52% of max supply per year — implausible. Real value must come from the relay response; no constant fallback.
+  3. **Nebula's quoted "105% APR at 500 nodes" arithmetic check**: their formula `((525,600 × 64 ÷ 500) ÷ 64) × 100` actually computes 105,120, not 105. Off by ×1000. Likely a typo, but worth re-verifying.
+
+---
+
+### 2026-05-18 18:08 UTC — nebula-agent (hotfix)
+**What**: Corrected CRP APR formula — was dividing by total supply instead of minimum stake
+**Why**: Replit spotted the bug: divisor was CRP_MAX_SUPPLY (64M) instead of CRP_MIN_STAKE (64), ~1M× understated. The block interval constant (525,600/yr) was correct in this repo but nebula.gg's fork had used 35,040/yr. The two errors cancelled to produce a "plausible" 0.1–1.5% range.
+**Files**:
+  - `artifacts/api-server/src/routes/fairlaunch.ts` — added `CRP_MIN_STAKE = 64`, replaced `computeCrpApr()` to use `(annualYield / activeNodes) / minStake * 100`
+  - `.agents/plans/crp-apr-utopia-data.md` — updated example APR values to realistic 105–1050% range
+**Build/Deploy**: pushed to main
+**Verified**: Formula now: `((525600 × 64 ÷ active_nodes) ÷ 64) × 100` — at 500 nodes ≈ 105% APR
+**Next agent needs to know**: This is per-staker APR at the minimum 64 CRP stake. If a staker has more than 64 CRP locked, their personal APR is lower. The formula assumes reward_per_block = 64 CRP (constant). If the relay returns a different value for per-mining-reward, update `CRP_REWARD_PER_BLOCK`.
+**Open questions**: (none)
+
+
+---
+
 ### 2026-05-18 18:00 UTC — replit-agent
 **What**: Pulled nebula's work, audited their CRP APR implementation, found two formula bugs
 **Why**: Maintainer asked to pull nebula's parallel work. On inspection of `9915d55`, the `computeCrpApr()` formula doesn't match what the maintainer asked for.
