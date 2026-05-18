@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { execSync } from "child_process";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
@@ -26,8 +27,28 @@ if (!basePath) {
   );
 }
 
+function getBuildInfo() {
+  try {
+    const hash = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+    const date = execSync("git log -1 --format=%ai", { encoding: "utf-8" }).trim();
+    const ref = process.env.GITHUB_SHA
+      ? process.env.GITHUB_SHA.slice(0, 7)
+      : hash;
+    const cleanHash = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.slice(0, 7) : hash;
+    return { hash: cleanHash, date, ref };
+  } catch {
+    return { hash: "unknown", date: new Date().toISOString(), ref: "unknown" };
+  }
+}
+
+const buildInfo = getBuildInfo();
+
 export default defineConfig({
   base: basePath,
+  define: {
+    __BUILD_HASH__: JSON.stringify(buildInfo.hash),
+    __BUILD_DATE__: JSON.stringify(buildInfo.date),
+  },
   plugins: [
     react(),
     tailwindcss(),

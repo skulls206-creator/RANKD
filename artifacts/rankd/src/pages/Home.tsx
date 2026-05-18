@@ -21,6 +21,7 @@ import { MobileSortControl } from "@/components/MobileSortControl";
 import { SortButton } from "@/components/SortButton";
 import { CoinCard } from "@/components/CoinCard";
 import { CoinDetailPanel } from "@/components/CoinDetailPanel";
+import { BuildInfo } from "@/components/BuildInfo";
 import { useDragScroll } from "@/hooks/use-drag-scroll";
 import { formatMoney, formatPrice, formatPercent, formatRelativeTime } from "@/lib/format";
 import { sortCoins, type SortField, type SortDir } from "@/lib/constants";
@@ -515,6 +516,7 @@ export default function Home() {
           <p className="text-xs text-muted-foreground/60">
             RANKD tracks only coins that launched fair — mined from genesis with no pre-mine, no team allocations, no VC wallets.
           </p>
+          <BuildInfo />
         </footer>
       </main>
 
