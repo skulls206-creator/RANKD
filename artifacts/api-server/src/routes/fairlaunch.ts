@@ -362,23 +362,25 @@ async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
   };
   const emptyStore = () => store({ nodeCount: null, blockReward: null, fetchedAt: new Date() });
 
+  const relayUrl = `${vpsUrl.replace(/\/+$/, "")}/api/1.0`;
+
   try {
     // Fetch both mining info and latest block data in parallel
     const [miningResp, blockResp] = await Promise.all([
       fetchWithTimeout(
-        `${vpsUrl}/api/1.0`,
+        relayUrl,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
+          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Relay-Token": relayToken },
           body: JSON.stringify({ method: "getMiningInfo" }),
         },
         8_000,
       ),
       fetchWithTimeout(
-        `${vpsUrl}/api/1.0`,
+        relayUrl,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Relay-Token": relayToken },
+          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Relay-Token": relayToken },
           body: JSON.stringify({ method: "getMiningBlocksWithTreasury", params: { fromBlockId: 0, toBlockId: 0, limit: 3 } }),
         },
         8_000,
@@ -449,6 +451,22 @@ async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
     console.warn("[utopia-relay] fetch failed:", (err as Error).message);
     return emptyStore();
   }
+}
+
+function getUtopiaRelayHealth(): { configured: boolean; relayUrl: string | null } {
+  const vpsUrl = process.env["UTOPIA_VPS_URL"];
+  const relayToken = process.env["UTOPIA_RELAY_TOKEN"];
+  if (!vpsUrl || !relayToken) {
+    return { configured: false, relayUrl: null };
+  }
+  return {
+    configured: true,
+    relayUrl: `${vpsUrl.replace(/\/+$/, "")}/api/1.0`,
+  };
+}
+
+function getUtopiaRelayUrl(): string | null {
+  return getUtopiaRelayHealth().relayUrl;
 }
 
 /** Legacy wrapper — returns just the node count */
