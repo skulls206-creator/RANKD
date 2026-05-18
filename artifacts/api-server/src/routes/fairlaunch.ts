@@ -307,6 +307,21 @@ interface UtopiaNetworkData {
   fetchedAt: Date;
 }
 
+/**
+ * If set, overrides the explorer's miningThreads count with your local UAM value.
+ * Set this in Replit deployment secrets (CRP_ACTIVE_NODES=7237) for a quick
+ * manual update without touching code. Faster than the explorer (real-time),
+ * but needs manual bumping.
+ */
+function resolveCrpActiveNodes(explorerCount: number | null): number | null {
+  const envOverride = process.env["CRP_ACTIVE_NODES"];
+  if (envOverride) {
+    const n = parseInt(envOverride, 10);
+    if (!isNaN(n) && n > 0) return n;
+  }
+  return explorerCount;
+}
+
 let utopiaNetworkCache: { entry: UtopiaNetworkData | null } = { entry: null };
 const UTOPIA_NODE_TTL_MS = 5 * 60_000;
 
@@ -390,10 +405,19 @@ async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
 
     if (nodeCount == null || isNaN(nodeCount) || blockReward == null || isNaN(blockReward)) {
       console.warn("[utopia-explorer] missing miningThreads or BlockReward in block", block);
+      // Even without explorer data, check for env override
+      const envOverride = resolveCrpActiveNodes(null);
+      if (envOverride != null) {
+        return store({ nodeCount: envOverride, blockReward: CRP_REWARD_PER_BLOCK, fetchedAt: new Date() });
+      }
       return emptyStore();
     }
 
-    return store({ nodeCount, blockReward, fetchedAt: new Date() });
+    const resolvedCount = resolveCrpActiveNodes(nodeCount);
+    if (resolvedCount !== nodeCount) {
+      console.log(`[utopia-explorer] node count overridden by CRP_ACTIVE_NODES: ${nodeCount} → ${resolvedCount}`);
+    }
+    return store({ nodeCount: resolvedCount, blockReward, fetchedAt: new Date() });
   } catch (err) {
     console.warn("[utopia-explorer] fetch failed:", (err as Error).message);
     return emptyStore();

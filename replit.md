@@ -57,7 +57,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Data Sources
 - **CoinGecko** (free tier): price, market cap, supply for all coins except CRP; 7-day chart data
 - **CoinPaprika**: price + 24h% for CRP (Crypton)
-- **Utopia P2P Explorer** (`utopian.is/api/explorer/blocks/get`): real CRP circulating supply
+  - **Utopia P2P Explorer** (`utopian.is/api/explorer/blocks/get`): real CRP circulating supply, active node count, block reward
+  - **Env var override**: `CRP_ACTIVE_NODES` in Replit deployment secrets overrides the explorer's node count with your live UAM value (open UAM → check "Total Mining Threads" → paste into secret).
 
 ## Key Files
 
