@@ -142,21 +142,22 @@ export function useContextMenu(onRefreshData: () => void) {
 
   useEffect(() => {
     function onContext(e: MouseEvent) {
-      e.preventDefault();
-
       const target = e.target as HTMLElement;
       const coinEl = target.closest("[data-coin-id]") as HTMLElement | null;
 
-      const coin: CoinContext | null = coinEl
-        ? {
-            id: coinEl.dataset.coinId ?? "",
-            name: coinEl.dataset.coinName ?? "",
-            symbol: coinEl.dataset.coinSymbol ?? "",
-            price: coinEl.dataset.coinPrice ?? "",
-            website: coinEl.dataset.coinWebsite ?? "",
-            explorer: coinEl.dataset.coinExplorer ?? "",
-          }
-        : null;
+      // Only intercept context menu on coin rows; let native copy/paste work everywhere else
+      if (!coinEl) return;
+
+      e.preventDefault();
+
+      const coin: CoinContext | null = {
+        id: coinEl.dataset.coinId ?? "",
+        name: coinEl.dataset.coinName ?? "",
+        symbol: coinEl.dataset.coinSymbol ?? "",
+        price: coinEl.dataset.coinPrice ?? "",
+        website: coinEl.dataset.coinWebsite ?? "",
+        explorer: coinEl.dataset.coinExplorer ?? "",
+      };
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -281,20 +282,22 @@ export function ContextMenuPortal({ onRefreshData }: ContextMenuProps) {
 
   useEffect(() => {
     function onContext(e: MouseEvent) {
-      e.preventDefault();
       const target = e.target as HTMLElement;
       const coinEl = target.closest("[data-coin-id]") as HTMLElement | null;
 
-      const coin: CoinContext | null = coinEl
-        ? {
-            id: coinEl.dataset.coinId ?? "",
-            name: coinEl.dataset.coinName ?? "",
-            symbol: coinEl.dataset.coinSymbol ?? "",
-            price: coinEl.dataset.coinPrice ?? "",
-            website: coinEl.dataset.coinWebsite ?? "",
-            explorer: coinEl.dataset.coinExplorer ?? "",
-          }
-        : null;
+      // Only intercept context menu on coin rows; let native copy/paste work everywhere else
+      if (!coinEl) return;
+
+      e.preventDefault();
+
+      const coin: CoinContext | null = {
+        id: coinEl.dataset.coinId ?? "",
+        name: coinEl.dataset.coinName ?? "",
+        symbol: coinEl.dataset.coinSymbol ?? "",
+        price: coinEl.dataset.coinPrice ?? "",
+        website: coinEl.dataset.coinWebsite ?? "",
+        explorer: coinEl.dataset.coinExplorer ?? "",
+      };
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
