@@ -70,3 +70,10 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - `lib/api-zod/src/generated/api.ts` — Zod schemas (manually updated to match spec)
 - `lib/api-client-react/src/generated/api.ts` — React Query hooks (manually updated)
 - `lib/api-client-react/src/generated/api.schemas.ts` — TypeScript types (manually updated)
+
+## Handoff notes
+
+- Relay now requires `UAM_UPSTREAM_URL` on the VPS.
+- Live VPS tests showed `127.0.0.1:22824` is closed and the UAM listen sockets on `59962`, `51605`, and `6076` are not HTTP.
+- `relay.py` can only forward HTTP JSON to a real upstream endpoint; it cannot talk to the live UAM sockets directly.
+- Next step is a binary bridge or official UAM HTTP endpoint from the VPS side, not more URL tweaks in the repo.
