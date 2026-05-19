@@ -1,1 +1,0 @@
-Deleting this test file shortly — checking write access.
