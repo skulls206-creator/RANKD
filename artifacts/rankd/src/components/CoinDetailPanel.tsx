@@ -89,69 +89,71 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
   const chartSection = (
     <div className="flex flex-col gap-2">
       <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">7-Day Price</div>
-      <div className="h-52 lg:h-48 w-full">
-        {chartLoading ? (
-          <div className="h-full w-full rounded-lg bg-muted/30 animate-pulse flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">Loading chart...</span>
-          </div>
-        ) : !chartData?.hasData || chartPoints.length === 0 ? (
-          <div className="h-full w-full rounded-lg border border-border/50 flex flex-col items-center justify-center gap-2">
-            <Activity className="w-6 h-6 text-muted-foreground/50" />
-            <span className="text-xs text-muted-foreground">Chart data unavailable</span>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartPoints} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id={`grad-${coin.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.2} />
-                  <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="ts"
-                ticks={chartTicks}
-                tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                domain={yDomain as [number, number]}
-                tickFormatter={(v: number) => {
-                  if (v < 0.001) return `$${v.toFixed(6)}`;
-                  if (v < 0.01)  return `$${v.toFixed(4)}`;
-                  if (v < 1)     return `$${v.toFixed(3)}`;
-                  if (v < 10)    return `$${v.toFixed(1)}`;
-                  if (v < 1000)  return `$${Math.round(v)}`;
-                  if (v < 1e6)   return `$${(v / 1000).toFixed(1)}K`;
-                  return `$${(v / 1e6).toFixed(1)}M`;
-                }}
-                tick={{ fontSize: 10, fill: "#6b7280" }}
-                tickLine={false}
-                axisLine={false}
-                width={yAxisWidth}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#1c2333", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
-                labelStyle={{ color: "#9ca3af" }}
-                itemStyle={{ color: chartColor }}
-                formatter={CHART_TOOLTIP_FORMATTER}
-                labelFormatter={CHART_LABEL_FORMATTER}
-              />
-              <Area
-                type="linear"
-                dataKey="price"
-                stroke={chartColor}
-                strokeWidth={1.5}
-                fill={`url(#grad-${coin.id})`}
-                dot={false}
-                isAnimationActive={false}
-                activeDot={{ r: 3, strokeWidth: 1, stroke: '#1c2333', fill: chartColor }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
+      <div className="bg-card rounded-lg border border-border p-3">
+        <div className="h-48 w-full">
+          {chartLoading ? (
+            <div className="h-full w-full rounded-lg bg-muted/30 animate-pulse flex items-center justify-center">
+              <span className="text-xs text-muted-foreground">Loading chart...</span>
+            </div>
+          ) : !chartData?.hasData || chartPoints.length === 0 ? (
+            <div className="h-full w-full rounded-lg border border-border/50 flex flex-col items-center justify-center gap-2">
+              <Activity className="w-6 h-6 text-muted-foreground/50" />
+              <span className="text-xs text-muted-foreground">Chart data unavailable</span>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartPoints} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={`grad-${coin.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartColor} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="ts"
+                  ticks={chartTicks}
+                  tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  tick={{ fontSize: 10, fill: "#6b7280" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  domain={yDomain as [number, number]}
+                  tickFormatter={(v: number) => {
+                    if (v < 0.001) return `$${v.toFixed(6)}`;
+                    if (v < 0.01)  return `$${v.toFixed(4)}`;
+                    if (v < 1)     return `$${v.toFixed(3)}`;
+                    if (v < 10)    return `$${v.toFixed(1)}`;
+                    if (v < 1000)  return `$${Math.round(v)}`;
+                    if (v < 1e6)   return `$${(v / 1000).toFixed(1)}K`;
+                    return `$${(v / 1e6).toFixed(1)}M`;
+                  }}
+                  tick={{ fontSize: 10, fill: "#6b7280" }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={yAxisWidth}
+                />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#1c2333", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
+                  labelStyle={{ color: "#9ca3af" }}
+                  itemStyle={{ color: chartColor }}
+                  formatter={CHART_TOOLTIP_FORMATTER}
+                  labelFormatter={CHART_LABEL_FORMATTER}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="price"
+                  stroke={chartColor}
+                  strokeWidth={1.5}
+                  fill={`url(#grad-${coin.id})`}
+                  dot={false}
+                  isAnimationActive={false}
+                  activeDot={{ r: 3, fill: chartColor }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
       {coin.id === "crp-crypton" && <CrpHistoryChart />}
     </div>
