@@ -29,8 +29,8 @@ import { sortCoins, type SortField, type SortDir } from "@/lib/constants";
 export default function Home() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [sortField, setSortField] = useState<SortField>("rank");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortField, setSortField] = useState<SortField>("stakingApy");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedCoinId, setExpandedCoinId] = useState<string | null>(null);
   const tableScroll = useDragScroll();
 
@@ -265,6 +265,9 @@ export default function Home() {
                   <th className="px-4 py-3 text-right">
                     <SortButton field="price" label="Price" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
+                  <th className="px-4 py-3 text-right">
+                    <SortButton field="stakingApy" label="Yield" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                  </th>
                   <th className="px-4 py-3 text-right" title="Exchange-reported 24h volume. May include inflated figures from unregulated venues.">
                     <SortButton field="volume24h" label="24h Vol" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
@@ -279,9 +282,6 @@ export default function Home() {
                   </th>
                   <th className="px-4 py-3 text-center">
                     <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Consensus</span>
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortButton field="stakingApy" label="Yield" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-center">
                     <SortButton field="softwareVersion" label="Version" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
@@ -392,6 +392,21 @@ export default function Home() {
                             </td>
 
                             <td className="px-4 py-4 text-right">
+                              {coin.stakingApy != null ? (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="font-mono text-sm tabular-nums text-amber-400 font-semibold">
+                                    {coin.stakingApy}%
+                                  </span>
+                                  {coin.yieldType && (
+                                    <span className="text-xs font-mono text-muted-foreground">{coin.yieldType}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="font-mono text-sm text-muted-foreground/40">—</span>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-4 text-right">
                               <span className="font-mono text-sm tabular-nums text-foreground">
                                 {formatMoney(coin.volume24h)}
                               </span>
@@ -429,21 +444,6 @@ export default function Home() {
                               <span className="font-mono text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
                                 {coin.consensusType}
                               </span>
-                            </td>
-
-                            <td className="px-4 py-4 text-right">
-                              {coin.stakingApy != null ? (
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <span className="font-mono text-sm tabular-nums text-amber-400 font-semibold">
-                                    {coin.stakingApy}%
-                                  </span>
-                                  {coin.yieldType && (
-                                    <span className="text-xs font-mono text-muted-foreground">{coin.yieldType}</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="font-mono text-sm text-muted-foreground/40">—</span>
-                              )}
                             </td>
 
                             <td className="px-4 py-4 text-center">

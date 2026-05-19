@@ -42,13 +42,17 @@ export function CoinCard({ coin, isExpanded, onClick }: CoinCardProps) {
           <div className="font-mono text-sm font-semibold text-foreground tabular-nums">
             {formatPrice(coin.price)}
           </div>
-          <div
-            className={`text-xs font-mono tabular-nums ${
+          {coin.stakingApy != null ? (
+            <div className="text-xs font-mono tabular-nums text-amber-400">
+              {coin.stakingApy}%
+            </div>
+          ) : (
+            <span className={`text-xs font-mono tabular-nums ${
               isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-muted-foreground"
-            }`}
-          >
-            {formatPercent(coin.change30d)}
-          </div>
+            }`}>
+              {formatPercent(coin.change30d)}
+            </span>
+          )}
         </div>
         <span className="ml-1 text-muted-foreground/50 flex-shrink-0">
           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
