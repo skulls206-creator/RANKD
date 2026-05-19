@@ -187,8 +187,8 @@ export default function Home() {
                     return "—";
                   })()
                 }
-                sub="🏆 Top Yield"
-                tooltip="Crypton (CRP) — King of fair launches"
+                sub="🏆 Crypton (CRP)"
+                tooltip="King of fair launches"
               />
             </>
           ) : null}
