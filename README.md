@@ -120,18 +120,35 @@ Already deployed via Replit's deployment system. On the deployment, set:
 |---|---|
 | `PORT` | Port to bind |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist. Unset = allow all (dev only). |
-| `UTOPIA_VPS_URL` | Base URL of the Utopia relay (your VPS) |
-| `UTOPIA_RELAY_TOKEN` | Shared secret sent as `X-Relay-Token` |
-| `UTOPIA_API_TOKEN` | Optional Utopia UAM API token |
 
-### VPS environment
+
+**API server (runtime env):**
 | Variable | Purpose |
 |---|---|
-| `UAM_UPSTREAM_URL` | Upstream UAM endpoint URL used by the VPS relay |
+| `PORT` | Port to bind |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist. Unset = allow all (dev only). |
+| `UAM_API_URL` | Your personal Utopia UAM API endpoint (default: `https://uam.khurk.xyz/api/1.0`) |
+| `UAM_API_TOKEN` | API token for UAM authentication (set via Replit deployment secrets) |
+| `CRP_ACTIVE_NODES` | Manual override for CRP node count (faster than API, but needs manual bumps) |
 
-## The Utopia relay (`relay.py`)
+### Legacy (no longer used)
+| Variable | Notes |
+|---|---|
+| `UTOPIA_VPS_URL` | Replaced by `UAM_API_URL` — direct API, no relay needed |
+| `UTOPIA_RELAY_TOKEN` | Replaced by `UAM_API_TOKEN` |
+| `UTOPIA_API_TOKEN` | No longer needed |
 
-A small Python stdlib HTTP relay that runs on your VPS and forwards JSON-RPC calls to a configured UAM upstream endpoint. It is **not in this repo** to keep its internals private. To set up your own relay, contact the maintainer for the script (or write your own — the API server expects POST `/api/1.0` with `X-Relay-Token` auth and forwards the JSON body verbatim).
+## Data sources
+
+### CRP (Crypton) network data
+
+The API server fetches CRP blockchain data (node count, block reward, circulating supply, APR) from **your personal Utopia UAM instance**, bypassing the public `utopian.is` explorer entirely. The UAM node runs on your VPS at `uam.khurk.xyz` behind Caddy with auto HTTPS.
+
+**Data flow:**
+1. Try your UAM node via JSON-RPC (`getMiningBlocksWithTreasury`, `getTreasuryCrpSupply`)
+2. If the node hasn't finished syncing, fall back to the public `utopian.is` explorer
+3. If both fail, try the `CRP_ACTIVE_NODES` env override
+4. Otherwise return null (APR won't display while syncing)
 
 ## Conventions
 

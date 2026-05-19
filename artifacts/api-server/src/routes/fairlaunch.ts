@@ -56,6 +56,7 @@ interface GitHubReleaseCache {
 }
 
 const GITHUB_CACHE_TTL_MS = 6 * 60 * 60_000;
+const GITHUB_CACHE_ERROR_TTL_MS = 5 * 60_000; // on error retry after 5 min instead of 6 hours
 const GITHUB_REFRESH_INTERVAL_MS = 5 * 60 * 60_000; // shorter than TTL so entries never expire between runs
 const GITHUB_STAGGER_DELAY_MS = 2_000;
 const githubReleaseCache = new Map<string, GitHubReleaseCache>();
@@ -154,6 +155,7 @@ interface ChartCacheEntry {
 }
 
 let cache: CacheEntry | null = null;
+let isRefreshing = false;
 const CACHE_TTL_MS = 5 * 60_000;
 
 const chartCache = new Map<string, ChartCacheEntry>();
@@ -352,15 +354,100 @@ function computeCrpApr(networkData: UtopiaNetworkData | null): number | null {
   return Math.round(apr * 100) / 100; // round to 2 decimal places
 }
 
+// ── UAM API Client ────────────────────────────────────────────────────────
+
 /**
- * Fetch Utopia network data (node count + block reward) from the public
- * Utopia P2P Explorer API. No VPS relay needed.
- * Cached for 5 minutes. Returns null if unavailable.
+ * Post a JSON-RPC call to your personal UAM instance at uam.khurk.xyz.
+ * Falls back to the public utopian.is explorer when UAM is unavailable
+ * or hasn't finished syncing.
+ */
+const UAM_API_URL =
+  process.env["UAM_API_URL"] ?? "https://uam.khurk.xyz/api/1.0";
+const UAM_API_TOKEN =
+  process.env["UAM_API_TOKEN"] ?? "";
+
+type UamJsonRpcResponse<T> = { result: T; error?: never } | { result?: never; error: string };
+
+async function uamRpc<T>(method: string, params: Record<string, unknown> = {}): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    const resp = await fetchWithTimeout(
+      UAM_API_URL,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, params, token: UAM_API_TOKEN }),
+      },
+      10_000,
+    );
+    if (!resp.ok) {
+      return { ok: false, error: `UAM HTTP ${resp.status}` };
+    }
+    const json = (await resp.json()) as UamJsonRpcResponse<T>;
+    if (json.error) {
+      return { ok: false, error: json.error };
+    }
+    return { ok: true, data: json.result as T }; // guarded by discriminant check above
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+// ── Explorer fallback ──────────────────────────────────────────────────────
+
+interface ExplorerBlock {
+  id: number;
+  block: number;
+  miningThreads: string;
+  RewardPerThread: string;
+  BlockReward: string;
+  TotalCRPAmount: string;
+  CRPSupply: string;
+  TotalCRPTransferred: string;
+  CRPTransferred: string;
+  CRPTransactions: string;
+  TotalCRPTransactions: string;
+  USDTSupply: string;
+  created_at: string;
+  updated_at: string;
+}
+
+async function fetchExplorerLatestBlock(): Promise<{ nodeCount: number; blockReward: number; crpSupply: number } | null> {
+  try {
+    const resp = await fetchWithTimeout(
+      "https://utopian.is/api/explorer/blocks/get?fromBlockId=0&toBlockId=0&limit=1",
+      { headers: { Accept: "application/json" } },
+      10_000,
+    );
+    if (!resp.ok) {
+      console.warn(`[explorer-fallback] HTTP ${resp.status}`);
+      return null;
+    }
+    const data = (await resp.json()) as ExplorerBlock[] | { blocks: ExplorerBlock[] };
+    const blocks = Array.isArray(data) ? data : (data.blocks ?? []);
+    if (!Array.isArray(blocks) || blocks.length === 0) {
+      console.warn("[explorer-fallback] no blocks");
+      return null;
+    }
+    const block = blocks[0];
+    const nodeCount = parseInt(String(block.miningThreads), 10);
+    const blockReward = parseFloat(String(block.BlockReward));
+    const crpSupply = parseFloat(String(block.CRPSupply));
+    if (isNaN(nodeCount) || isNaN(blockReward)) return null;
+    return { nodeCount, blockReward, crpSupply };
+  } catch (err) {
+    console.warn("[explorer-fallback] fetch failed:", (err as Error).message);
+    return null;
+  }
+}
+
+/**
+ * Fetch Utopia network data from your personal UAM instance (primary) or
+ * the public utopian.is explorer (fallback). Cached for 5 minutes.
  *
- * The explorer returns blocks with confirmed fields:
- *   miningThreads — active node count (string, e.g. "2676")
- *   BlockReward — per-block emission (string, e.g. "47.999998044")
- *   CRPSupply — circulating supply (string)
+ * Data flow:
+ *   1. Try UAM getMiningBlocksWithTreasury for latest block
+ *   2. If UAM returns empty (not synced yet), fall back to explorer
+ *   3. If neither works, return null
  */
 async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
   const cached = utopiaNetworkCache.entry;
@@ -374,50 +461,59 @@ async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
   };
   const emptyStore = () => store({ nodeCount: null, blockReward: null, fetchedAt: new Date() });
 
+  // ── Primary: your UAM node ────────────────────────────────────────────
   try {
-    const resp = await fetchWithTimeout(
-      "https://utopian.is/api/explorer/blocks/get?fromBlockId=0&toBlockId=0&limit=1",
-      { headers: { Accept: "application/json" } },
-      10_000,
+    // Get the latest block(s) — getMiningBlocksWithTreasury returns an array at result.
+    // The latest block id tells us how synced the node is (current real block ≈ 226278).
+    // If the node is still syncing (only genesis-era blocks), fall through to explorer.
+    const blockInfo = await uamRpc<
+      { id: number; numberMiners: number; dateTime: string }[]
+    >(
+      "getMiningBlocksWithTreasury",
+      { fromBlockId: 0, toBlockId: 1 },
     );
-    if (!resp.ok) {
-      console.warn(`[utopia-explorer] returned HTTP ${resp.status}`);
-      return emptyStore();
-    }
 
-    const data = (await resp.json()) as Array<Record<string, unknown>> | Record<string, unknown>;
-    const blocks = Array.isArray(data) ? data : (data["blocks"] as Array<Record<string, unknown>>) ?? [];
-    if (!Array.isArray(blocks) || blocks.length === 0) {
-      console.warn("[utopia-explorer] no blocks returned");
-      return emptyStore();
-    }
-
-    const block = blocks[0] as Record<string, unknown>;
-    const threadsRaw = block["miningThreads"];
-    const rewardRaw = block["BlockReward"];
-
-    const nodeCount = threadsRaw != null ? parseInt(String(threadsRaw), 10) : null;
-    const blockReward = rewardRaw != null ? parseFloat(String(rewardRaw)) : null;
-
-    if (nodeCount == null || isNaN(nodeCount) || blockReward == null || isNaN(blockReward)) {
-      console.warn("[utopia-explorer] missing miningThreads or BlockReward in block", block);
-      // Even without explorer data, check for env override
-      const envOverride = resolveCrpActiveNodes(null);
-      if (envOverride != null) {
-        return store({ nodeCount: envOverride, blockReward: CRP_REWARD_PER_BLOCK, fetchedAt: new Date() });
+    if (blockInfo.ok && Array.isArray(blockInfo.data) && blockInfo.data.length > 0) {
+      const sorted = [...blockInfo.data].sort((a, b) => b.id - a.id);
+      const latest = sorted[0];
+      // Only trust UAM data if it has synced past the genesis epoch
+      // (block 226278 at ~May 2026 — if block id is below ~200K we're still syncing)
+      if (latest.id > 100_000) {
+        const nodeCount = latest.numberMiners ?? null;
+        const resolvedCount = resolveCrpActiveNodes(nodeCount);
+        console.log(`[uam] network data via ${UAM_API_URL}: ${resolvedCount} nodes (block ${latest.id})`);
+        return store({ nodeCount: resolvedCount, blockReward: CRP_REWARD_PER_BLOCK, fetchedAt: new Date() });
       }
-      return emptyStore();
+      console.log(`[uam] node still syncing (latest block ${latest.id} from ${latest.dateTime}), falling through`);
     }
 
-    const resolvedCount = resolveCrpActiveNodes(nodeCount);
-    if (resolvedCount !== nodeCount) {
-      console.log(`[utopia-explorer] node count overridden by CRP_ACTIVE_NODES: ${nodeCount} → ${resolvedCount}`);
+    console.log("[uam] getMiningBlocksWithTreasury returned empty or stale — node is still syncing");
+
+    const sysInfo = await uamRpc<{ numberOfConnections: number }>("getSystemInfo", {});
+    if (sysInfo.ok) {
+      // Use numberOfConnections as a proxy for network health;
+      // fall through to explorer for real block data
+      console.log(`[uam] system info: ${sysInfo.data.numberOfConnections} connections, uptime info available`);
     }
-    return store({ nodeCount: resolvedCount, blockReward, fetchedAt: new Date() });
   } catch (err) {
-    console.warn("[utopia-explorer] fetch failed:", (err as Error).message);
-    return emptyStore();
+    console.warn("[uam] RPC call failed:", (err as Error).message);
   }
+
+  // ── Fallback: public explorer ────────────────────────────────────────
+  console.log("[utopia] falling back to public explorer");
+  const explorer = await fetchExplorerLatestBlock();
+  if (explorer) {
+    const resolvedCount = resolveCrpActiveNodes(explorer.nodeCount);
+    return store({ nodeCount: resolvedCount, blockReward: explorer.blockReward, fetchedAt: new Date() });
+  }
+
+  // ── Last resort: env override ────────────────────────────────────────
+  const envOverride = resolveCrpActiveNodes(null);
+  if (envOverride != null) {
+    return store({ nodeCount: envOverride, blockReward: CRP_REWARD_PER_BLOCK, fetchedAt: new Date() });
+  }
+
+  return emptyStore();
 }
 
 /** Legacy wrapper — returns just the node count */
@@ -432,6 +528,27 @@ async function fetchCrpDynamicApr(): Promise<number | null> {
   return computeCrpApr(networkData);
 }
 
+/** Returns live CRP supply from the UAM instance or explorer fallback */
+async function fetchCrpSupply(): Promise<number | null> {
+  // Try UAM treasury info first — getTreasuryCrpSupply returns { totalSupply: string, records: [...] }
+  const treasury = await uamRpc<{ totalSupply: string }>(
+    "getTreasuryCrpSupply",
+    {},
+  );
+  if (treasury.ok && treasury.data?.totalSupply) {
+    return parseFloat(treasury.data.totalSupply);
+  }
+
+  // Fall back to explorer
+  const explorer = await fetchExplorerLatestBlock();
+  return explorer?.crpSupply ?? null;
+}
+
+/**
+ * Build GitHub API request headers.
+ * GITHUB_TOKEN should be treated as a secret — it grants elevated API rate
+ * limits tied to your account. Keep it out of version control and logs.
+ */
 function buildGitHubHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
@@ -439,24 +556,32 @@ function buildGitHubHeaders(): Record<string, string> {
   };
   const token = process.env["GITHUB_TOKEN"];
   if (token) {
+    if (!token.startsWith("github_pat_") && !token.startsWith("ghp_")) {
+      console.warn("GITHUB_TOKEN may have overly broad permissions. Consider using a fine-grained token.");
+    }
     headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
 }
 
 async function fetchGitHubReleaseFromNetwork(githubUrl: string): Promise<GitHubReleaseCache> {
-  const nullEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date() };
+  const errorTtl = GITHUB_CACHE_ERROR_TTL_MS;
+  const nullEntry: GitHubReleaseCache = { softwareVersion: null, lastReleasedAt: null, fetchedAt: new Date(0) };
   try {
     const match = githubUrl.match(/github\.com\/([^/]+\/[^/]+)/);
     if (!match) {
-      githubReleaseCache.set(githubUrl, nullEntry);
+      // Permanent failure (invalid URL) — still cache, but with short TTL since
+      // the URL might be fixed in a config update.
+      githubReleaseCache.set(githubUrl, { ...nullEntry, fetchedAt: new Date() });
       return nullEntry;
     }
     const repo = match[1].replace(/\.git$/, "");
     const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
     const response = await fetch(apiUrl, { headers: buildGitHubHeaders() });
     if (!response.ok) {
-      githubReleaseCache.set(githubUrl, nullEntry);
+      // On error (non-200), cache with a short TTL so temporary outages
+      // recover faster instead of waiting 6 hours.
+      githubReleaseCache.set(githubUrl, { ...nullEntry, fetchedAt: new Date() });
       return nullEntry;
     }
     const data = (await response.json()) as GitHubRelease;
@@ -468,15 +593,23 @@ async function fetchGitHubReleaseFromNetwork(githubUrl: string): Promise<GitHubR
     githubReleaseCache.set(githubUrl, entry);
     return entry;
   } catch {
-    githubReleaseCache.set(githubUrl, nullEntry);
+    // Network error — cache with short TTL to retry quickly
+    githubReleaseCache.set(githubUrl, { ...nullEntry, fetchedAt: new Date() });
     return nullEntry;
   }
 }
 
 async function fetchGitHubRelease(githubUrl: string): Promise<GitHubReleaseCache> {
   const cached = githubReleaseCache.get(githubUrl);
-  if (cached && Date.now() - cached.fetchedAt.getTime() < GITHUB_CACHE_TTL_MS) {
-    return cached;
+  if (cached) {
+    // Use shorter TTL for error entries (softwareVersion is null) so temporary
+    // outages recover faster. Use the full TTL for successful entries.
+    const ageMs = Date.now() - cached.fetchedAt.getTime();
+    const isError = cached.softwareVersion === null && cached.fetchedAt.getTime() > 0;
+    const ttl = isError ? GITHUB_CACHE_ERROR_TTL_MS : GITHUB_CACHE_TTL_MS;
+    if (ageMs < ttl) {
+      return cached;
+    }
   }
   return fetchGitHubReleaseFromNetwork(githubUrl);
 }
@@ -531,6 +664,7 @@ async function fetchCoinPaprikaData(
     const [paprikaResp, utopiaNetworkData] = await Promise.all([
       fetch(`https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(meta.coinPaprikaId)}`, {
         headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
       }),
       meta.utopiaExplorer ? fetchUtopiaNetworkData() : Promise.resolve(null),
     ]);
@@ -591,6 +725,19 @@ async function getCache(): Promise<CacheEntry> {
   if (cache && Date.now() - cache.fetchedAt.getTime() < CACHE_TTL_MS) {
     return cache;
   }
+  // Guard against concurrent refresh calls. If another request is already
+  // refreshing, wait up to 10 s for it to finish, then return the result.
+  if (isRefreshing) {
+    const pollStart = Date.now();
+    while (isRefreshing && Date.now() - pollStart < 10_000) {
+      await new Promise((r) => setTimeout(r, 200));
+      // If cache was updated while we waited, use it
+      if (cache && Date.now() - cache.fetchedAt.getTime() < CACHE_TTL_MS) {
+        return cache;
+      }
+    }
+  }
+  isRefreshing = true;
   try {
     cache = await refreshCache();
   } catch (err) {
@@ -603,6 +750,8 @@ async function getCache(): Promise<CacheEntry> {
     // Coins will show with no price data, which is better than a 500 error.
     console.error("Market data unavailable on cold start:", (err as Error).message);
     return { coingecko: [], coinpaprika: new Map(), fetchedAt: new Date(0) };
+  } finally {
+    isRefreshing = false;
   }
   return cache;
 }

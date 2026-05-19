@@ -3,6 +3,8 @@ import { getCRPOverrides, updateCRPOverrides } from "../lib/crp-config";
 
 const router: IRouter = Router();
 
+console.log("[admin] Admin API routes loaded" + (process.env.ADMIN_API_KEY ? " (key configured)" : " (DISABLED — set ADMIN_API_KEY)"));
+
 function checkAdminKey(req: Request, res: Response): boolean {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
