@@ -14,22 +14,33 @@ interface BlockData {
 }
 
 type ViewMode = "nodes" | "apr";
+type TimeRange = "1d" | "7d" | "30d" | "1y" | "all";
+
+const TIME_RANGES: { key: TimeRange; label: string }[] = [
+  { key: "1d", label: "1D" },
+  { key: "7d", label: "7D" },
+  { key: "30d", label: "30D" },
+  { key: "1y", label: "1Y" },
+  { key: "all", label: "All" },
+];
 
 export function CrpHistoryChart() {
   const [blocks, setBlocks] = useState<BlockData[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("nodes");
+  const [timeRange, setTimeRange] = useState<TimeRange>("7d");
 
   useEffect(() => {
+    setLoading(true);
     const apiUrl = import.meta.env.VITE_API_BASE_URL || "";
-    fetch(apiUrl + "/api/fairlaunch/crp/history")
+    fetch(apiUrl + `/api/fairlaunch/crp/history?range=${timeRange}`)
       .then((r) => r.json())
       .then((data) => {
         setBlocks(data.blocks ?? []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [timeRange]);
 
   if (loading) {
     return (
@@ -82,9 +93,21 @@ export function CrpHistoryChart() {
 
   return (
     <div className="col-span-2 bg-card rounded-lg border border-border p-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-          {viewMode === "nodes" ? "Active Nodes (500 blocks)" : "APR History (500 blocks)"}
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+        <div className="flex gap-1">
+          {TIME_RANGES.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTimeRange(key)}
+              className={`px-2 py-1 rounded text-[10px] font-mono font-semibold transition-colors ${
+                timeRange === key
+                  ? "bg-primary/20 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="flex gap-1">
           <button

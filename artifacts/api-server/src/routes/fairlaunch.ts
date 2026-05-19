@@ -470,7 +470,7 @@ async function fetchUtopiaNetworkData(): Promise<UtopiaNetworkData | null> {
       { id: number; numberMiners: number; dateTime: string }[]
     >(
       "getMiningBlocksWithTreasury",
-      { fromBlockId: 0, toBlockId: 1 },
+      { fromBlockId: 227000, toBlockId: 300000 },
     );
 
     if (blockInfo.ok && Array.isArray(blockInfo.data) && blockInfo.data.length > 0) {
@@ -956,51 +956,90 @@ interface UtopiaBlockHistoryCache {
 let blockHistoryCache: UtopiaBlockHistoryCache | null = null;
 const BLOCK_HISTORY_TTL_MS = 10 * 60_000;
 
-async function fetchUtopiaBlockHistory(): Promise<UtopiaBlockHistoryCache["blocks"]> {
-  const allBlocks: UtopiaBlockHistoryCache["blocks"] = [];
+interface UamMiningBlock {
+  id: number;
+  numberMiners: number;
+  dateTime: string;
+  treasury?: {
+    CRP?: Array<{ type: string; amount: number }>;
+  };
+}
 
-  // Fetch up to 500 blocks (max the API returns) from the current tip
+/**
+ * Fetch ALL mining blocks from UAM in a single range call, then
+ * convert to our internal format. The Utopia client handles up to
+ * 227K+ blocks in one request (~30-60s).
+ */
+async function fetchUtopiaBlockHistory(): Promise<UtopiaBlockHistoryCache["blocks"]> {
   try {
-    const resp = await fetchWithTimeout(
-      "https://utopian.is/api/explorer/blocks/get?fromBlockId=0&toBlockId=0&limit=500",
-      { headers: { Accept: "application/json" } },
-      15_000,
+    // Fetch the tip block (small range, fast)
+    const tipResp = await uamRpc<UamMiningBlock[]>(
+      "getMiningBlocksWithTreasury",
+      { fromBlockId: 227000, toBlockId: 300000 },
     );
-    if (!resp.ok) {
-      console.warn(`[utopia-block-history] returned HTTP ${resp.status}`);
+    if (!tipResp.ok || !Array.isArray(tipResp.data) || tipResp.data.length === 0) {
+      console.warn("[uam-block-history] could not get chain tip");
       return [];
     }
-    const data = (await resp.json()) as Array<Record<string, unknown>>;
-    if (!Array.isArray(data)) return [];
+    const latestId = tipResp.data[0].id;
 
-    for (const block of data) {
-      const blockNum = block["block"] != null ? parseInt(String(block["block"]), 10) : null;
-      const threadsStr = block["miningThreads"];
-      const threads = threadsStr != null ? parseInt(String(threadsStr), 10) : null;
-      const rewardStr = block["BlockReward"];
-      const reward = rewardStr != null ? parseFloat(String(rewardStr)) : null;
-      const supplyStr = block["CRPSupply"];
-      const supply = supplyStr != null ? parseFloat(String(supplyStr)) : null;
-      const timestamp = (block["created_at"] as string) ?? "";
+    // Fetch ALL blocks from chain genesis to tip.
+    // Use direct fetch instead of uamRpc to get a longer timeout (120s)
+    const allResp = await fetchWithTimeout(
+      UAM_API_URL,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          method: "getMiningBlocksWithTreasury",
+          params: { fromBlockId: 1, toBlockId: latestId },
+          token: UAM_API_TOKEN,
+        }),
+      },
+      120_000,
+    );
 
-      if (blockNum == null || threads == null || reward == null) continue;
+    if (!allResp.ok) {
+      console.warn(`[uam-block-history] HTTP ${allResp.status}`);
+      return [];
+    }
 
-      const apr = computeCrpApr({ nodeCount: threads, blockReward: reward, fetchedAt: new Date() });
+    const allResult = (await allResp.json()) as { result?: UamMiningBlock[] };
+    const rawBlocks = allResult.result;
+    if (!Array.isArray(rawBlocks)) {
+      console.warn("[uam-block-history] result is not an array");
+      return [];
+    }
 
-      allBlocks.push({
-        block: blockNum,
+    const blocks: UtopiaBlockHistoryCache["blocks"] = [];
+    // rawBlocks comes in descending order (highest id first)
+    for (const b of rawBlocks) {
+      const threads = b.numberMiners ?? 0;
+      const reward = CRP_REWARD_PER_BLOCK;
+      let supply = 0;
+      if (b.treasury?.CRP) {
+        const totalSupply = b.treasury.CRP.find((t) => t.type === "TOTAL_SUPPLY");
+        if (totalSupply) supply = totalSupply.amount;
+      }
+
+      const apr = computeCrpApr({ nodeCount: threads, blockReward: reward, fetchedAt: new Date() }) ?? 0;
+
+      blocks.push({
+        block: b.id,
         miningThreads: threads,
         blockReward: reward,
-        crpSupply: supply ?? 0,
-        timestamp,
-        apr: apr ?? 0,
+        crpSupply: supply,
+        timestamp: b.dateTime,
+        apr,
       });
     }
 
-    allBlocks.sort((a, b) => a.block - b.block);
-    return allBlocks;
+    // Sort ascending by block id
+    blocks.sort((a, b) => a.block - b.block);
+    console.log(`[uam-block-history] fetched ${blocks.length} blocks (id 1..${latestId})`);
+    return blocks;
   } catch (err) {
-    console.warn("[utopia-block-history] fetch failed:", (err as Error).message);
+    console.warn("[uam-block-history] fetch failed:", (err as Error).message);
     return [];
   }
 }
@@ -1016,9 +1055,39 @@ async function getBlockHistory(): Promise<UtopiaBlockHistoryCache["blocks"]> {
 
 router.get(
   "/fairlaunch/crp/history",
-  async (_req, res): Promise<void> => {
-    const blocks = await getBlockHistory();
-    res.json({ blocks, count: blocks.length });
+  async (req, res): Promise<void> => {
+    const allBlocks = await getBlockHistory();
+
+    const range = (req.query["range"] as string) ?? "all";
+    const now = Date.now();
+    let cutoff: number | null = null;
+
+    switch (range) {
+      case "1d":
+        cutoff = now - 24 * 60 * 60 * 1000;
+        break;
+      case "7d":
+        cutoff = now - 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "30d":
+        cutoff = now - 30 * 24 * 60 * 60 * 1000;
+        break;
+      case "1y":
+        cutoff = now - 365 * 24 * 60 * 60 * 1000;
+        break;
+      case "all":
+      default:
+        break;
+    }
+
+    const blocks = cutoff
+      ? allBlocks.filter((b) => {
+          const ts = new Date(b.timestamp).getTime();
+          return !isNaN(ts) && ts >= cutoff!;
+        })
+      : allBlocks;
+
+    res.json({ blocks, count: blocks.length, range });
   },
 );
 
