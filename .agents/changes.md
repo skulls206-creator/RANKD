@@ -25,6 +25,16 @@ Running ledger of every substantive edit, build, and deploy. Both agents (Replit
 
 ## Entries
 
+### 2026-05-18 — Satoshi (OpenClaw)
+**What**: TypeScript strict mode enabled — `strict: true` in tsconfig.base.json
+**Why**: Clean up type safety across all packages
+**Commit**: (landed via separate push)
+**Files**: `tsconfig.base.json` (compilerOptions.strict: true), various source files
+**Verified**: `pnpm run typecheck` passes clean
+**Next agent needs to know**: Strict mode is now enforced. Run `pnpm run typecheck` after any change before committing.
+
+---
+
 ### 2026-05-18 18:30 UTC — replit-agent
 **What**: Resolved merge conflict on `changes.md` after nebula's hotfix push (`aabfe8e`) crossed with our lockfile-regen push. Also regenerated `pnpm-lock.yaml` to unblock 4 consecutive failed GH Pages deploys.
 **Why**: Both agents appended entries at the top simultaneously → conflict markers. Separately, every deploy since `0895637` had failed in CI with `ERR_PNPM_OUTDATED_LOCKFILE` / `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` — `package.json` edits never had a corresponding `pnpm install` run.
