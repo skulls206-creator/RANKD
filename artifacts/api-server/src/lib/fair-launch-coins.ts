@@ -420,7 +420,7 @@ export const FAIR_LAUNCH_COINS: FairLaunchCoinMeta[] = [
       "Launched inside the Utopia P2P ecosystem with no pre-mine, limited and stable emissions from block 1. Privacy-focused, community-mined from genesis with zero insider allocation.",
     isFeatured: true,
     stakingApy: 1,
-    yieldType: "PoS Staking",
+    yieldType: "Mining",
     softwareVersion: "v1.3.1278",
     lastReleasedAt: "2026-04-16T00:00:00.000Z",
   },
