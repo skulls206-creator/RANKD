@@ -10,9 +10,10 @@ interface CoinCardProps {
   coin: FairLaunchCoin;
   isExpanded: boolean;
   onClick: () => void;
+  rank?: number;
 }
 
-export function CoinCard({ coin, isExpanded, onClick }: CoinCardProps) {
+export function CoinCard({ coin, isExpanded, onClick, rank }: CoinCardProps) {
   const isPositive = coin.change30d != null && coin.change30d > 0;
   const isNegative = coin.change30d != null && coin.change30d < 0;
 
@@ -26,8 +27,8 @@ export function CoinCard({ coin, isExpanded, onClick }: CoinCardProps) {
         onClick={onClick}
         className="w-full text-left px-4 py-3.5 flex items-center gap-3 active:bg-card/80"
       >
-        <span className="w-10 text-xs font-mono tabular-nums text-right flex-shrink-0 text-amber-400 font-semibold">
-          {coin.stakingApy != null ? `${coin.stakingApy}%` : "—"}
+        <span className="w-6 text-xs font-mono text-muted-foreground tabular-nums text-right flex-shrink-0">
+          {rank != null ? rank : "—"}
         </span>
         <CoinLogo imageUrl={coin.imageUrl} name={coin.name} symbol={coin.symbol} />
         <div className="flex-1 min-w-0">
@@ -43,9 +44,14 @@ export function CoinCard({ coin, isExpanded, onClick }: CoinCardProps) {
             {formatPrice(coin.price)}
           </div>
           {coin.stakingApy != null ? (
-            coin.yieldType ? (
-              <div className="text-xs font-mono text-muted-foreground">{coin.yieldType}</div>
-            ) : null
+            <>
+              <div className="text-xs font-mono tabular-nums text-amber-400">
+                {coin.stakingApy}%
+              </div>
+              {coin.yieldType && (
+                <div className="text-xs font-mono text-muted-foreground">{coin.yieldType}</div>
+              )}
+            </>
           ) : (
             <span className={`text-xs font-mono tabular-nums ${
               isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-muted-foreground"

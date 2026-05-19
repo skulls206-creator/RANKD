@@ -244,6 +244,7 @@ export default function Home() {
               >
                 <CoinCard
                   coin={coin}
+                  rank={idx + 1}
                   isExpanded={expandedCoinId === coin.id}
                   onClick={() => handleRowClick(coin.id)}
                 />
@@ -268,7 +269,7 @@ export default function Home() {
                     <SortButton field="price" label="Price" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Type</span>
+                    <SortButton field="stakingApy" label="Yield" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right" title="Exchange-reported 24h volume. May include inflated figures from unregulated venues.">
                     <SortButton field="volume24h" label="24h Vol" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
@@ -352,8 +353,8 @@ export default function Home() {
                             }`}
                           >
                             <td className="px-4 py-4">
-                              <span className="font-mono text-xs tabular-nums text-amber-400 font-semibold">
-                                {coin.stakingApy != null ? `${coin.stakingApy}%` : "—"}
+                              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                                {idx + 1}
                               </span>
                             </td>
 
@@ -392,10 +393,17 @@ export default function Home() {
                             </td>
 
                             <td className="px-4 py-4 text-right">
-                              {coin.yieldType ? (
-                                <span className="text-xs font-mono text-muted-foreground">{coin.yieldType}</span>
+                              {coin.stakingApy != null ? (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="font-mono text-sm tabular-nums text-amber-400 font-semibold">
+                                    {coin.stakingApy}%
+                                  </span>
+                                  {coin.yieldType && (
+                                    <span className="text-xs font-mono text-muted-foreground">{coin.yieldType}</span>
+                                  )}
+                                </div>
                               ) : (
-                                <span className="text-xs font-mono text-muted-foreground/40">—</span>
+                                <span className="font-mono text-sm text-muted-foreground/40">—</span>
                               )}
                             </td>
 
