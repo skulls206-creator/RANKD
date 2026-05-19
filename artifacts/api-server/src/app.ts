@@ -51,6 +51,6 @@ app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/", router);
+app.use("/api", router);
 
 export default app;
