@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, Request, Response } from "express";
 import { getCRPOverrides, updateCRPOverrides } from "../lib/crp-config";
 
 const router: IRouter = Router();
 
-function checkAdminKey(req: Parameters<Parameters<typeof router.use>[0]>[0], res: Parameters<Parameters<typeof router.use>[0]>[1]): boolean {
+function checkAdminKey(req: Request, res: Response): boolean {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
     res.status(403).json({ error: "forbidden", message: "Admin API is not enabled. Set ADMIN_API_KEY to enable it." });
@@ -17,12 +17,12 @@ function checkAdminKey(req: Parameters<Parameters<typeof router.use>[0]>[0], res
   return true;
 }
 
-router.get("/admin/crp/version", (req, res): void => {
+router.get("/admin/crp/version", (req: Request, res: Response): void => {
   if (!checkAdminKey(req, res)) return;
   res.json(getCRPOverrides());
 });
 
-router.patch("/admin/crp/version", (req, res): void => {
+router.patch("/admin/crp/version", (req: Request, res: Response): void => {
   if (!checkAdminKey(req, res)) return;
 
   const { softwareVersion, lastReleasedAt } = req.body as Record<string, unknown>;

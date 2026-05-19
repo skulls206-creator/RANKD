@@ -19,7 +19,7 @@ interface CoinGeckoMarketData {
   id: string;
   symbol: string;
   name: string;
-  image: string;
+  image: string | null;
   current_price: number | null;
   market_cap: number | null;
   total_volume: number | null;

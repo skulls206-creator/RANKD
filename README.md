@@ -69,7 +69,7 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`, which:
 3. Publishes `artifacts/rankd/dist/public` to Pages
 
 **Required GitHub repository variables** (Settings → Secrets and variables → Actions → Variables):
-- `RANKD_API_BASE_URL` — full origin of the Replit-deployed API server (e.g. `https://rankd-x.replit.app`)
+- `RANKD_API_BASE_URL` — full origin of the Replit-deployed API server (e.g. `https://rankd-xx.replit.app`)
 - `RANKD_BASE_PATH` *(optional)* — defaults to `/` (custom domain at root). Set to `/RANKD/` only if you switch back to the github.io subpath URL.
 
 **Custom domain**: `artifacts/rankd/public/CNAME` contains `rankd.khurk.xyz`. GitHub Pages picks this up automatically on deploy. DNS: point `rankd` CNAME → `skulls206-creator.github.io` on khurk.xyz.
@@ -95,7 +95,7 @@ After the push:
 1. Go to **Settings → Pages** → set **Source: GitHub Actions**
 2. After the first deploy completes, **Settings → Pages → Custom domain** = `rankd.khurk.xyz` (the `CNAME` file already commits this, but the UI toggle enables the Pages-side enforcement and the "Enforce HTTPS" checkbox)
 3. Go to **Settings → Secrets and variables → Actions → Variables** and add:
-   - `RANKD_API_BASE_URL` = `https://rankd-x.replit.app`
+   - `RANKD_API_BASE_URL` = `https://rankd-xx.replit.app`
 4. Push any commit (or click "Run workflow" on the Deploy action) to trigger a build
 5. Once DNS propagates, visit `https://rankd.khurk.xyz`
 

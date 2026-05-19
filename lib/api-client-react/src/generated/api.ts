@@ -167,7 +167,7 @@ export const getGetFairLaunchCoinsQueryOptions = <
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof getFairLaunchCoins>>
-  > = ({ signal }) => getFairLaunchCoins(params, { signal, ...requestOptions });
+  > = ({ signal }: { signal: AbortSignal }) => getFairLaunchCoins(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getFairLaunchCoins>>,
@@ -334,7 +334,7 @@ export const getGetFairLaunchStatsQueryOptions = <
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof getFairLaunchStats>>
-  > = ({ signal }) => getFairLaunchStats({ signal, ...requestOptions });
+  > = ({ signal }: { signal: AbortSignal }) => getFairLaunchStats({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getFairLaunchStats>>,
