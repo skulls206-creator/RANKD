@@ -4,7 +4,6 @@ export type SortField = "rank" | "price" | "volume24h" | "change30d" | "launchYe
 export type SortDir = "asc" | "desc";
 
 export const MOBILE_SORT_OPTIONS: { field: SortField; label: string }[] = [
-  { field: "rank", label: "Rank" },
   { field: "price", label: "Price" },
   { field: "volume24h", label: "24h Vol" },
   { field: "change30d", label: "30D %" },
