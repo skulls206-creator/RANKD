@@ -104,7 +104,7 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
             <AreaChart data={chartPoints} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={`grad-${coin.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.25} />
+                  <stop offset="5%" stopColor={chartColor} stopOpacity={0.2} />
                   <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -140,13 +140,14 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
                 labelFormatter={CHART_LABEL_FORMATTER}
               />
               <Area
-                type="monotone"
+                type="linear"
                 dataKey="price"
                 stroke={chartColor}
-                strokeWidth={2}
+                strokeWidth={1.5}
                 fill={`url(#grad-${coin.id})`}
                 dot={false}
-                activeDot={{ r: 4, strokeWidth: 0, fill: chartColor }}
+                isAnimationActive={false}
+                activeDot={{ r: 3, strokeWidth: 1, stroke: '#1c2333', fill: chartColor }}
               />
             </AreaChart>
           </ResponsiveContainer>
