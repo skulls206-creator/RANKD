@@ -173,9 +173,9 @@ export default function Home() {
                 sub="Vetted fair launches"
               />
               <StatCard
-                label="Top Coin"
-                value={stats.topCoin}
-                sub="By market cap"
+                label="Most Stable"
+                value="CRP"
+                sub="By Volatility — hasn't moved $0.02 in 200+ days"
               />
               <StatCard
                 label="Top Yield"
