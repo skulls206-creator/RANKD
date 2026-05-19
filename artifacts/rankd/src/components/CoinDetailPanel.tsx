@@ -188,7 +188,7 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           {coin.stakingApy != null && (
             <div className="flex items-center gap-2 text-xs text-emerald-400">
               <span className="text-emerald-500 shrink-0">✓</span>
-              <span className="text-muted-foreground"><span className="text-amber-400 font-semibold">{coin.stakingApy}% APR</span> mining yield on min stake</span>
+              <span className="text-muted-foreground"><span className="text-amber-400 font-semibold">{coin.stakingApy}% APR</span> {coin.yieldType?.toLowerCase() ?? "staking"} yield</span>
             </div>
           )}
         </div>
