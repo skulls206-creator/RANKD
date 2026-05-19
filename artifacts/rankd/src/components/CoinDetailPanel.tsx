@@ -152,6 +152,7 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           </ResponsiveContainer>
         )}
       </div>
+      {coin.id === "crp-crypton" && <CrpHistoryChart />}
     </div>
   );
 
@@ -221,8 +222,6 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           </div>
         )}
       </div>
-
-      {coin.id === "crp-crypton" && <CrpHistoryChart />}
 
       {(coin.softwareVersion || coin.lastReleasedAt || coin.activeNodes != null) && (
         <div className="flex flex-col gap-2">

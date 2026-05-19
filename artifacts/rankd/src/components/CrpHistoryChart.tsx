@@ -32,17 +32,16 @@ export function CrpHistoryChart() {
 
   if (loading) {
     return (
-      <div className="h-52 rounded-lg bg-muted/30 animate-pulse flex items-center justify-center">
-        <span className="text-xs text-muted-foreground">Loading CRP history...</span>
+      <div className="h-24 rounded-lg bg-muted/20 animate-pulse flex items-center justify-center">
+        <span className="text-[10px] text-muted-foreground">Loading CRP history...</span>
       </div>
     );
   }
 
   if (blocks.length === 0) {
     return (
-      <div className="h-52 rounded-lg border border-border/50 flex flex-col items-center justify-center gap-2">
-        <Activity className="w-6 h-6 text-muted-foreground/50" />
-        <span className="text-xs text-muted-foreground">Block history unavailable</span>
+      <div className="h-16 rounded-lg border border-border/30 flex items-center justify-center gap-2">
+        <span className="text-[10px] text-muted-foreground">Block history — API needs redeploy</span>
       </div>
     );
   }
