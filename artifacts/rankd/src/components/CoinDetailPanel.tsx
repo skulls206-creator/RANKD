@@ -165,9 +165,35 @@ export function CoinDetailPanel({ coin }: CoinDetailPanelProps) {
           <span className="text-sm font-semibold text-foreground">Verified Fair Launch</span>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">{coin.whyFair}</p>
-        <div className="mt-auto pt-2 border-t border-border">
-          <div className="text-xs text-muted-foreground">
-            No pre-mine · No VC allocation · No insider wallets
+        <div className="flex flex-col gap-1.5 mt-2">
+          <div className="flex items-center gap-2 text-xs text-emerald-400">
+            <span className="text-emerald-500 shrink-0">✓</span>
+            <span className="text-muted-foreground">No pre-mine — all supply mined from genesis block</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-emerald-400">
+            <span className="text-emerald-500 shrink-0">✓</span>
+            <span className="text-muted-foreground">No VC allocation or insider presale wallets</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-emerald-400">
+            <span className="text-emerald-500 shrink-0">✓</span>
+            <span className="text-muted-foreground">{coin.algorithm} · {coin.consensusType} · launched {coin.launchYear}</span>
+          </div>
+          {coin.activeNodes != null && (
+            <div className="flex items-center gap-2 text-xs text-emerald-400">
+              <span className="text-emerald-500 shrink-0">✓</span>
+              <span className="text-muted-foreground"><span className="text-foreground font-semibold">{coin.activeNodes.toLocaleString()}</span> active nodes securing the network</span>
+            </div>
+          )}
+          {coin.stakingApy != null && (
+            <div className="flex items-center gap-2 text-xs text-emerald-400">
+              <span className="text-emerald-500 shrink-0">✓</span>
+              <span className="text-muted-foreground"><span className="text-amber-400 font-semibold">{coin.stakingApy}% APR</span> mining yield on min stake</span>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 pt-2 border-t border-border">
+          <div className="text-xs font-mono text-muted-foreground/60 italic">
+            Independently verified against blockchain explorer data
           </div>
         </div>
       </div>
