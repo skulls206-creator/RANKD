@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getBaseUrl } from "@workspace/api-client-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -21,7 +22,7 @@ export function CrpHistoryChart() {
   const [viewMode, setViewMode] = useState<ViewMode>("nodes");
 
   useEffect(() => {
-    fetch("/api/fairlaunch/crp/history")
+    fetch(getBaseUrl() + "/api/fairlaunch/crp/history")
       .then((r) => r.json())
       .then((data) => {
         setBlocks(data.blocks ?? []);
