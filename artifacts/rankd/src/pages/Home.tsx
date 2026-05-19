@@ -280,9 +280,7 @@ export default function Home() {
                   <th className="px-4 py-3 text-center">
                     <SortButton field="launchYear" label="Year" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
-                  <th className="px-4 py-3 text-center">
-                    <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Consensus</span>
-                  </th>
+
                   <th className="px-4 py-3 text-center">
                     <SortButton field="softwareVersion" label="Version" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                   </th>
@@ -440,11 +438,7 @@ export default function Home() {
                               </span>
                             </td>
 
-                            <td className="px-4 py-4 text-center">
-                              <span className="font-mono text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
-                                {coin.consensusType}
-                              </span>
-                            </td>
+
 
                             <td className="px-4 py-4 text-center">
                               {coin.softwareVersion ? (
