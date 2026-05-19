@@ -1,0 +1,20 @@
+[Unit]
+Description=RANKD API Server
+After=network.target utopia.service
+Wants=utopia.service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/node --enable-source-maps /opt/rankd-api/index.mjs
+WorkingDirectory=/opt/rankd-api
+EnvironmentFile=/opt/rankd-api/.env
+Restart=always
+RestartSec=5
+User=root
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
