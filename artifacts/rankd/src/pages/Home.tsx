@@ -175,7 +175,8 @@ export default function Home() {
               <StatCard
                 label="Most Stable"
                 value="CRP"
-                sub="By Volatility — hasn't moved $0.02 in 200+ days"
+                sub="By Volatility"
+                tooltip="Hasn't moved $0.02 in 200+ days"
               />
               <StatCard
                 label="Top Yield"
