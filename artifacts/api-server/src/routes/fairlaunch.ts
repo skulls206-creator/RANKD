@@ -954,7 +954,7 @@ interface UtopiaBlockHistoryCache {
 }
 
 let blockHistoryCache: UtopiaBlockHistoryCache | null = null;
-const BLOCK_HISTORY_TTL_MS = 10 * 60_000;
+const BLOCK_HISTORY_TTL_MS = 60 * 60_000; // 1 hour — 227K blocks is expensive to re-fetch
 
 interface UamMiningBlock {
   id: number;
@@ -1048,8 +1048,28 @@ async function getBlockHistory(): Promise<UtopiaBlockHistoryCache["blocks"]> {
   if (blockHistoryCache && Date.now() - blockHistoryCache.fetchedAt.getTime() < BLOCK_HISTORY_TTL_MS) {
     return blockHistoryCache.blocks;
   }
+
+  // Try refreshing in background — serve stale cache if it fails
+  if (blockHistoryCache) {
+    // Don't await — let the stale cache serve instantly while refresh runs
+    fetchUtopiaBlockHistory().then((blocks) => {
+      if (blocks.length > 0) {
+        blockHistoryCache = { blocks, fetchedAt: new Date() };
+        console.log(`[block-history] background refresh: ${blocks.length} blocks`);
+      }
+    }).catch((err) => {
+      console.warn("[block-history] background refresh failed:", (err as Error).message);
+    });
+
+    // Return stale cache immediately
+    return blockHistoryCache.blocks;
+  }
+
+  // First ever fetch — block on it
   const blocks = await fetchUtopiaBlockHistory();
-  blockHistoryCache = { blocks, fetchedAt: new Date() };
+  if (blocks.length > 0) {
+    blockHistoryCache = { blocks, fetchedAt: new Date() };
+  }
   return blocks;
 }
 
